@@ -44,12 +44,13 @@ class MainMenu(BaseGame):
         self._build()
 
     def _build(self) -> None:
-        bw, bh = 300, 78
+        bw, bh = 300, 67
         cx = self._w // 2 - bw // 2
         specs = [
-            ("BOXEO",  "boxing",         self._h // 2 - 95),
-            ("POSES",  "pose_challenge",  self._h // 2 + 5),
-            ("SALIR",  "exit",            self._h // 2 + 105),
+            ("BOXEO",     "boxing",          self._h // 2 - 120),
+            ("POSES",     "pose_challenge",  self._h // 2 -  40),
+            ("AEROBICOS", "aerobics",        self._h // 2 +  40),
+            ("SALIR",     "exit",            self._h // 2 + 120),
         ]
         for label, action, top_y in specs:
             self._buttons.append(_Button(label, action, (cx, top_y, bw, bh)))

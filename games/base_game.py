@@ -4,6 +4,10 @@ import numpy as np
 
 
 class BaseGame(ABC):
+    def get_video_frame(self) -> Optional[np.ndarray]:
+        """Return current trainer-video frame (270×480) or None (panel stays black)."""
+        return None
+
     @abstractmethod
     def update(self, frame: np.ndarray, landmarks: Optional[list],
                frame_w: int, frame_h: int) -> None:

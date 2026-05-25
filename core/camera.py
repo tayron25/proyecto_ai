@@ -9,6 +9,8 @@ class CameraCapture:
         self.cap = cv2.VideoCapture(cam_id, cv2.CAP_DSHOW)
         if not self.cap.isOpened():
             self.cap = cv2.VideoCapture(cam_id)
+        # MJPG must be set before resolution — unlocks 30 fps on most webcams
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
