@@ -242,11 +242,16 @@ class PoseChallenge(BaseGame):
         if self._success:
             if now - self._success_t >= SUCCESS_LINGER:
                 self._success = False
-                self._idx    += 1
-                if self._idx >= len(YOGA_POSES):
-                    self._next = "menu"
+                pose = YOGA_POSES[self._idx]
+                if self._active_option < len(pose["options"]) - 1:
+                    # More options remain — stay on this pose, video will switch option
+                    pass
                 else:
-                    self._load_pose(self._idx)
+                    self._idx += 1
+                    if self._idx >= len(YOGA_POSES):
+                        self._next = "menu"
+                    else:
+                        self._load_pose(self._idx)
             return
 
         # Video-driven option switching
