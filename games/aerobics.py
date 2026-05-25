@@ -23,8 +23,7 @@ from utils.math_utils import calc_angle
 # ── Video and module timing ───────────────────────────────────────────────────
 AEROBICS_VIDEO    = "assets/videos/aerobicos/aerobicos1.mp4"
 MODULE_TIMESTAMPS = [8.0, 23.0, 38.0, 53.0]   # video time when each module activates
-MODULE_TARGET_REPS = [15, 8, 16, 15]           # goal reps per module (display only)
-
+MODULE_TARGET_REPS = [15, 16, 16, 15]           # goal reps per module (display only)
 TRANSITION_SECS = 2.0
 SUCCESS_FLASH   = 0.6
 
@@ -47,6 +46,8 @@ def _extract_data(landmarks: list, fw: int, fh: int) -> dict:
             "nose_y":  landmarks[NOSE].y,
             "ls_y":    landmarks[LEFT_SHOULDER].y,
             "rs_y":    landmarks[RIGHT_SHOULDER].y,
+            "le_y":    landmarks[LEFT_ELBOW].y,
+            "re_y":    landmarks[RIGHT_ELBOW].y,
             "lw_y":    landmarks[LEFT_WRIST].y,
             "rw_y":    landmarks[RIGHT_WRIST].y,
             "ls_x":    landmarks[LEFT_SHOULDER].x,
@@ -70,7 +71,8 @@ def _check_mod1(data: dict) -> Optional[str]:
     d_sh = abs(data["ls_x"] - data["rs_x"])
     if d_wr < d_sh:
         return "CLOSED"
-    if d_wr > d_sh:
+    # Wrists must be wider than shoulders AND above head level
+    if d_wr > d_sh and data["lw_y"] < data["nose_y"] and data["rw_y"] < data["nose_y"]:
         return "OPEN"
     return None
 
@@ -85,10 +87,10 @@ def _form_ok_mod1(data: dict) -> bool:
 def _check_mod2(data: dict) -> Optional[str]:
     if not data:
         return None
-    if data["lw_y"] > data["ls_y"] and data["rw_y"] < data["nose_y"]:
-        return "RIGHT_HIGH"
     if data["lw_y"] < data["nose_y"] and data["rw_y"] > data["rs_y"]:
         return "LEFT_HIGH"
+    if data["lw_y"] > data["ls_y"] and data["rw_y"] < data["nose_y"]:
+        return "RIGHT_HIGH"
     return None
 
 
@@ -97,26 +99,29 @@ def _check_mod3(data: dict) -> Optional[str]:
         return None
     if data["lw_y"] < data["nose_y"] and data["rw_y"] < data["nose_y"]:
         return "ARMS_UP"
-    if (data["lw_y"] > data["ls_y"] and data["rw_y"] > data["rs_y"]
-            and data.get("left_hip_angle", 180) < 130):
-        return "PULL_L"
-    if (data["lw_y"] > data["ls_y"] and data["rw_y"] > data["rs_y"]
-            and data.get("right_hip_angle", 180) < 130):
-        return "PULL_R"
+    # Both wrists below nose + hip angle loosely flexed (front-facing detection)
+    wrists_down = data["lw_y"] > data["nose_y"] and data["rw_y"] > data["nose_y"]
+    hip_flexed  = (data.get("left_hip_angle",  180) < 170
+                   or data.get("right_hip_angle", 180) < 170)
+    if wrists_down and hip_flexed:
+        return "PULL"
     return None
 
 
 def _check_mod4(data: dict) -> Optional[str]:
     if not data:
         return None
+    # Elbows must be raised to at least shoulder height (permissive +0.06)
+    elbows_up = (data["le_y"] < data["ls_y"] + 0.06
+                 and data["re_y"] < data["rs_y"] + 0.06)
+    if not elbows_up:
+        return None
     d_wr = abs(data["lw_x"] - data["rw_x"])
     d_sh = abs(data["ls_x"] - data["rs_x"])
-    d_an = abs(data["la_x"] - data["ra_x"])
-    d_hp = abs(data["lh_x"] - data["rh_x"])
-    if d_wr < d_sh and d_an <= d_hp:
-        return "CLOSED"
-    if d_wr > d_sh * 1.5 and d_an > d_hp * 1.2:
-        return "OPEN"
+    if d_wr < d_sh * 0.8:   # wrists close toward chest
+        return "WRIST_IN"
+    if d_wr > d_sh:          # wrists open
+        return "WRIST_OUT"
     return None
 
 
@@ -128,7 +133,7 @@ AEROBIC_MODULES = [
         "check":       _check_mod1,
         "form_check":  _form_ok_mod1,
         "transitions": {"CLOSED": {"OPEN"}, "OPEN": {"CLOSED"}},
-        "score_on":    {"OPEN", "CLOSED"},
+        "score_on":    {"OPEN"},
         "labels":      {"CLOSED": "Brazos Cerrados", "OPEN": "Brazos Abiertos"},
     },
     {
@@ -146,21 +151,21 @@ AEROBIC_MODULES = [
         "check":       _check_mod3,
         "form_check":  None,
         "transitions": {
-            "ARMS_UP": {"PULL_L", "PULL_R"},
-            "PULL_L":  {"ARMS_UP"},
-            "PULL_R":  {"ARMS_UP"},
+            "ARMS_UP": {"PULL"},
+            "PULL":    {"ARMS_UP"},
         },
-        "score_on": {"PULL_L", "PULL_R"},
-        "labels":   {"ARMS_UP": "Brazos Arriba", "PULL_L": "Jalon Izq", "PULL_R": "Jalon Der"},
+        "score_on": {"PULL"},
+        "labels":   {"ARMS_UP": "Brazos Arriba", "PULL": "Jalon con Rodilla"},
     },
     {
-        "name":        "Paso Lateral",
-        "description": "Cierra y abre brazos y piernas",
+        "name":        "Codos Arriba",
+        "description": "Codos arriba, muñecas al pecho",
         "check":       _check_mod4,
         "form_check":  None,
-        "transitions": {"CLOSED": {"OPEN"}, "OPEN": {"CLOSED"}},
-        "score_on":    {"OPEN", "CLOSED"},
-        "labels":      {"CLOSED": "Cerrado", "OPEN": "Abierto"},
+        "transitions": {"WRIST_OUT": {"WRIST_IN"}, "WRIST_IN": {"WRIST_OUT"}},
+        "score_on":    {"WRIST_IN"},
+        "count_until": 67.0,
+        "labels":      {"WRIST_OUT": "Muñecas Abiertas", "WRIST_IN": "Muñecas al Pecho"},
     },
 ]
 
@@ -226,9 +231,11 @@ class AerobicsGame(BaseGame):
                     and now - self._last_cp_t <= TRANSITION_SECS
                     and cp_now in mod["transitions"].get(self._last_cp, set())):
                 if cp_now in mod["score_on"]:
-                    self._reps  += 1
-                    self._score += 10
-                    self._flash_t = now
+                    count_until = mod.get("count_until", float("inf"))
+                    if vt <= count_until:
+                        self._reps  += 1
+                        self._score += 10
+                        self._flash_t = now
             self._last_cp   = cp_now
             self._last_cp_t = now
         else:
