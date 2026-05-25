@@ -48,7 +48,7 @@ class MainMenu(BaseGame):
         cx = self._w // 2 - bw // 2
         specs = [
             ("BOXEO",     "boxing",          self._h // 2 - 120),
-            ("POSES",     "pose_challenge",  self._h // 2 -  40),
+            ("YOGA",      "pose_challenge",  self._h // 2 -  40),
             ("AEROBICOS", "aerobics",        self._h // 2 +  40),
             ("SALIR",     "exit",            self._h // 2 + 120),
         ]

@@ -56,8 +56,8 @@ YOGA_POSES: List[Dict] = [
         "option_timestamps": [0.0],
         "options": [
             [
-                ("angle", "left_elbow",      ">", 150, "Codo izq recto"),
-                ("angle", "right_elbow",     ">", 150, "Codo der recto"),
+                ("angle", "left_elbow",      ">", 120, "Codo izq recto"),
+                ("angle", "right_elbow",     ">", 120, "Codo der recto"),
                 ("y_cmp", "lw_y", "<", "nose_y",       "Mano izq sobre cabeza"),
                 ("y_cmp", "rw_y", "<", "nose_y",       "Mano der sobre cabeza"),
                 ("angle", "left_hip_angle",  ">", 160, "Cadera izq recta"),
@@ -123,13 +123,11 @@ YOGA_POSES: List[Dict] = [
         "options": [
             # Option A: balance on left leg, right knee raised
             [
-                ("angle", "left_knee",       ">", 160, "Pierna izq recta"),
                 ("angle", "right_hip_angle", "<", 130, "Cadera der elevada"),
                 ("angle", "right_knee",      "<", 110, "Rodilla der doblada"),
             ],
             # Option B: balance on right leg, left knee raised
             [
-                ("angle", "right_knee",     ">", 160, "Pierna der recta"),
                 ("angle", "left_hip_angle", "<", 120, "Cadera izq elevada"),
                 ("angle", "left_knee",      "<", 110, "Rodilla izq doblada"),
             ],
@@ -198,8 +196,9 @@ class PoseChallenge(BaseGame):
         self._idx            = 0
         self._active_option  = 0
         self._score          = 0
-        self._hold_start: Optional[float] = None
-        self._hold_ratio     = 0.0
+        self._hold_accumulated = 0.0
+        self._last_met_t: Optional[float] = None
+        self._hold_ratio       = 0.0
         self._data:       dict = {}
         self._best_conds: list = []
         self._n_met          = 0
@@ -223,10 +222,11 @@ class PoseChallenge(BaseGame):
             self._video = None
         else:
             self._video.start()
-        self._active_option = 0
-        self._hold_start    = None
-        self._hold_ratio    = 0.0
-        self._best_conds    = []
+        self._active_option    = 0
+        self._hold_accumulated = 0.0
+        self._last_met_t       = None
+        self._hold_ratio       = 0.0
+        self._best_conds       = []
         self._n_met         = 0
         self._all_met       = False
 
@@ -255,9 +255,10 @@ class PoseChallenge(BaseGame):
         new_opt = sum(1 for t in timestamps if vt >= t) - 1
         new_opt = max(0, min(new_opt, len(YOGA_POSES[self._idx]["options"]) - 1))
         if new_opt != self._active_option:
-            self._active_option = new_opt
-            self._hold_start    = None
-            self._hold_ratio    = 0.0
+            self._active_option    = new_opt
+            self._hold_accumulated = 0.0
+            self._last_met_t       = None
+            self._hold_ratio       = 0.0
 
         # Advance to next pose when video ends
         if self._video and self._video.is_done:
@@ -294,22 +295,26 @@ class PoseChallenge(BaseGame):
         else:
             self._n_met, self._best_conds, self._all_met = 0, [], False
 
-        # Hold timer
+        # Hold timer — acumula; la barra pausa al perder alineación, no reinicia
         if self._all_met:
-            if self._hold_start is None:
-                self._hold_start = now
-            self._hold_ratio = min((now - self._hold_start) / HOLD_SECS, 1.0)
+            if self._last_met_t is not None:
+                self._hold_accumulated = min(
+                    self._hold_accumulated + (now - self._last_met_t), HOLD_SECS
+                )
+            self._last_met_t = now
+            self._hold_ratio = self._hold_accumulated / HOLD_SECS
             if self._hold_ratio >= 1.0:
                 pts = len(self._best_conds) * 10
-                self._score      += pts
-                self._success     = True
-                self._success_t   = now
-                self._success_pts = pts
-                self._hold_start  = None
-                self._hold_ratio  = 0.0
+                self._score           += pts
+                self._success          = True
+                self._success_t        = now
+                self._success_pts      = pts
+                self._hold_accumulated = 0.0
+                self._last_met_t       = None
+                self._hold_ratio       = 0.0
         else:
-            self._hold_start = None
-            self._hold_ratio = 0.0
+            self._last_met_t = None
+            # _hold_accumulated y _hold_ratio se conservan (barra pausada)
 
     def render(self, frame: np.ndarray) -> None:
         if self._idx >= len(YOGA_POSES):
