@@ -5,7 +5,8 @@ from typing import Optional, Tuple
 
 from games.base_game import BaseGame
 from core.renderer import (
-    draw_text, draw_progress_bar, draw_panel,
+    draw_text, draw_progress_bar, draw_panel, draw_chip,
+    BG, AERO_CLR, INK, INK_DIM, LINE,
     WHITE, GREEN, RED, YELLOW, CYAN,
 )
 from core.video_player import VideoPlayer
@@ -20,15 +21,13 @@ from utils.landmarks import (
 )
 from utils.math_utils import calc_angle
 
-# ── Video and module timing ───────────────────────────────────────────────────
 AEROBICS_VIDEO    = "assets/videos/aerobicos/aerobicos1.mp4"
-MODULE_TIMESTAMPS = [8.0, 23.0, 38.0, 53.0]   # video time when each module activates
-MODULE_TARGET_REPS = [15, 16, 16, 15]           # goal reps per module (display only)
+MODULE_TIMESTAMPS = [8.0, 23.0, 38.0, 53.0]
+MODULE_TARGET_REPS = [15, 16, 16, 15]
 TRANSITION_SECS = 2.0
 SUCCESS_FLASH   = 0.6
 
 
-# ── Data extraction ───────────────────────────────────────────────────────────
 def _extract_data(landmarks: list, fw: int, fh: int) -> dict:
     if not landmarks or len(landmarks) < 33:
         return {}
@@ -63,7 +62,6 @@ def _extract_data(landmarks: list, fw: int, fh: int) -> dict:
         return {}
 
 
-# ── Checkpoint functions ──────────────────────────────────────────────────────
 def _check_mod1(data: dict) -> Optional[str]:
     if not data:
         return None
@@ -71,7 +69,6 @@ def _check_mod1(data: dict) -> Optional[str]:
     d_sh = abs(data["ls_x"] - data["rs_x"])
     if d_wr < d_sh:
         return "CLOSED"
-    # Wrists must be wider than shoulders AND above head level
     if d_wr > d_sh and data["lw_y"] < data["nose_y"] and data["rw_y"] < data["nose_y"]:
         return "OPEN"
     return None
@@ -99,7 +96,6 @@ def _check_mod3(data: dict) -> Optional[str]:
         return None
     if data["lw_y"] < data["nose_y"] and data["rw_y"] < data["nose_y"]:
         return "ARMS_UP"
-    # Both wrists below nose + hip angle loosely flexed (front-facing detection)
     wrists_down = data["lw_y"] > data["nose_y"] and data["rw_y"] > data["nose_y"]
     hip_flexed  = (data.get("left_hip_angle",  180) < 170
                    or data.get("right_hip_angle", 180) < 170)
@@ -111,21 +107,19 @@ def _check_mod3(data: dict) -> Optional[str]:
 def _check_mod4(data: dict) -> Optional[str]:
     if not data:
         return None
-    # Elbows must be raised to at least shoulder height (permissive +0.06)
     elbows_up = (data["le_y"] < data["ls_y"] + 0.06
                  and data["re_y"] < data["rs_y"] + 0.06)
     if not elbows_up:
         return None
     d_wr = abs(data["lw_x"] - data["rw_x"])
     d_sh = abs(data["ls_x"] - data["rs_x"])
-    if d_wr < d_sh * 0.8:   # wrists close toward chest
+    if d_wr < d_sh * 0.8:
         return "WRIST_IN"
-    if d_wr > d_sh:          # wrists open
+    if d_wr > d_sh:
         return "WRIST_OUT"
     return None
 
 
-# ── Module definitions ────────────────────────────────────────────────────────
 AEROBIC_MODULES = [
     {
         "name":        "Bombeo L",
@@ -150,29 +144,25 @@ AEROBIC_MODULES = [
         "description": "Brazos arriba, baja con rodilla",
         "check":       _check_mod3,
         "form_check":  None,
-        "transitions": {
-            "ARMS_UP": {"PULL"},
-            "PULL":    {"ARMS_UP"},
-        },
-        "score_on": {"PULL"},
-        "labels":   {"ARMS_UP": "Brazos Arriba", "PULL": "Jalon con Rodilla"},
+        "transitions": {"ARMS_UP": {"PULL"}, "PULL": {"ARMS_UP"}},
+        "score_on":    {"PULL"},
+        "labels":      {"ARMS_UP": "Brazos Arriba", "PULL": "Jalon con Rodilla"},
     },
     {
         "name":        "Codos Arriba",
-        "description": "Codos arriba, muñecas al pecho",
+        "description": "Codos arriba, munecas al pecho",
         "check":       _check_mod4,
         "form_check":  None,
         "transitions": {"WRIST_OUT": {"WRIST_IN"}, "WRIST_IN": {"WRIST_OUT"}},
         "score_on":    {"WRIST_IN"},
         "count_until": 67.0,
-        "labels":      {"WRIST_OUT": "Muñecas Abiertas", "WRIST_IN": "Muñecas al Pecho"},
+        "labels":      {"WRIST_OUT": "Munecas Abiertas", "WRIST_IN": "Munecas al Pecho"},
     },
 ]
 
 
-# ── Game class ────────────────────────────────────────────────────────────────
 class AerobicsGame(BaseGame):
-    def __init__(self, frame_w: int = 640, frame_h: int = 480):
+    def __init__(self, frame_w: int = 1380, frame_h: int = 1080):
         self._w    = frame_w
         self._h    = frame_h
         self._video: Optional[VideoPlayer] = None
@@ -202,7 +192,6 @@ class AerobicsGame(BaseGame):
         if self._next:
             return
 
-        # Video-driven module activation
         vt = self._video.current_time if self._video else 0.0
         new_mod = sum(1 for t in MODULE_TIMESTAMPS if vt >= t) - 1
         new_mod = max(0, min(new_mod, len(AEROBIC_MODULES) - 1))
@@ -212,7 +201,6 @@ class AerobicsGame(BaseGame):
             self._last_cp  = None
             self._cur_cp   = None
 
-        # End of video → back to menu
         if self._video and self._video.is_done:
             self._next = "menu"
             return
@@ -247,58 +235,61 @@ class AerobicsGame(BaseGame):
         if self._mod_idx >= len(AEROBIC_MODULES):
             return
 
-        now      = time.perf_counter()
-        mod      = AEROBIC_MODULES[self._mod_idx]
-        panel_w  = 220
-        target   = MODULE_TARGET_REPS[self._mod_idx]
-        draw_panel(frame, (0, 0, panel_w, self._h), color=(10, 10, 40), alpha=0.70)
+        now     = time.perf_counter()
+        mod     = AEROBIC_MODULES[self._mod_idx]
+        panel_w = int(280 * self._w / 640)
+        target  = MODULE_TARGET_REPS[self._mod_idx]
 
-        draw_text(frame, "AEROBICOS", (8, 28), scale=0.65, color=CYAN,  thickness=2)
-        draw_text(frame, mod["name"], (8, 52), scale=0.55, color=WHITE, thickness=2)
+        draw_panel(frame, (0, 0, panel_w, self._h), color=BG, alpha=0.75)
+        cv2.line(frame, (panel_w, 0), (panel_w, self._h), LINE, 1, cv2.LINE_AA)
+
+        # Mode chip + module name
+        draw_chip(frame, (12, 42), "AEROBICOS", color=AERO_CLR, scale=0.65)
+        draw_text(frame, mod["name"], (12, 78), scale=0.7, color=INK, thickness=2)
 
         desc = mod["description"]
-        draw_text(frame, desc[:28], (8, 72), scale=0.38, color=(200, 200, 200), thickness=1)
+        draw_text(frame, desc[:28], (12, 104), scale=0.48, color=INK_DIM, thickness=1)
         if len(desc) > 28:
-            draw_text(frame, desc[28:], (8, 87), scale=0.38, color=(200, 200, 200), thickness=1)
+            draw_text(frame, desc[28:], (12, 124), scale=0.48, color=INK_DIM, thickness=1)
 
         # Checkpoint indicators
-        y_off = 108
+        y_off = 156
         for cp, label in mod["labels"].items():
             active = (self._cur_cp == cp)
-            color  = GREEN if active else (100, 100, 100)
+            color  = AERO_CLR if active else LINE
             marker = ">" if active else "-"
-            draw_text(frame, f"{marker} {label}", (8, y_off),
-                      scale=0.42, color=color, thickness=1)
-            y_off += 18
+            draw_text(frame, f"{marker} {label}", (12, y_off),
+                      scale=0.52, color=color, thickness=1)
+            y_off += 28
 
-        # Form feedback (module 1 only)
+        # Form feedback (module 1)
         if mod["form_check"] is not None:
             form_ok = mod["form_check"](self._data)
             draw_text(frame,
                       "FORMA OK" if form_ok else "AJUSTA CODOS",
-                      (8, y_off + 4),
-                      scale=0.42,
-                      color=GREEN if form_ok else RED,
+                      (12, y_off + 8),
+                      scale=0.52,
+                      color=AERO_CLR if form_ok else RED,
                       thickness=1)
 
-        # Rep progress — goal is per-module target (visual only, not gating)
+        # Rep progress
         rep_display = min(self._reps, target)
-        rep_color   = GREEN if self._reps >= target else CYAN
+        rep_color   = AERO_CLR if self._reps >= target else AERO_CLR
+        bar_y       = self._h - 80
         draw_text(frame, f"Reps: {self._reps}/{target}",
-                  (8, self._h - 72), scale=0.55, color=rep_color, thickness=2)
-        draw_progress_bar(frame, (8, self._h - 52), (panel_w - 16, 14),
-                          rep_display, target, fg_color=rep_color)
+                  (12, bar_y - 14), scale=0.65, color=rep_color, thickness=2)
+        draw_progress_bar(frame, (12, bar_y), (panel_w - 24, 18),
+                          rep_display, target, fg_color=AERO_CLR)
 
         if now - self._flash_t < SUCCESS_FLASH:
-            draw_text(frame, "+10 pts", (8, self._h - 22),
-                      scale=0.55, color=YELLOW, thickness=2)
+            draw_text(frame, "+10 pts", (12, self._h - 30),
+                      scale=0.65, color=YELLOW, thickness=2)
 
-        # Top-right: module counter + score
-        counter_txt = f"Modulo {self._mod_idx + 1}/{len(AEROBIC_MODULES)}"
-        (cw, _), _ = cv2.getTextSize(counter_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-        draw_panel(frame, (self._w - cw - 20, 0, cw + 20, 65), color=(10, 10, 40), alpha=0.65)
-        draw_text(frame, counter_txt,           (self._w - cw - 10, 28), scale=0.6,  color=WHITE)
-        draw_text(frame, f"Pts: {self._score}", (self._w - cw - 10, 55), scale=0.55, color=YELLOW)
+        # Top-right: module counter + score chip
+        counter_txt = f"MOD {self._mod_idx + 1}/{len(AEROBIC_MODULES)}"
+        (cw, _), _  = cv2.getTextSize(counter_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 1)
+        draw_chip(frame, (self._w - cw - 36, 50), counter_txt, color=AERO_CLR, scale=0.65)
+        draw_chip(frame, (self._w - cw - 36, 96), f"PTS: {self._score}", color=AERO_CLR, scale=0.65)
 
     def get_video_frame(self) -> Optional[np.ndarray]:
         return self._video.read_frame() if self._video else None

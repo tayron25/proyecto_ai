@@ -7,6 +7,8 @@ import numpy as np
 from games.base_game import BaseGame
 from core.renderer import (
     draw_target, draw_text, draw_panel, draw_wrist_cursor, draw_progress_bar,
+    draw_chip, draw_stepper,
+    BOX_CLR, INK, INK_DIM, LINE,
     WHITE, RED, GREEN, YELLOW, CYAN, ORANGE,
 )
 from core.video_player import VideoPlayer
@@ -19,12 +21,10 @@ from utils.landmarks import (
 from utils.math_utils import landmark_to_px, distance_2d, calc_angle
 from utils.punch_tracker import ArmPunchState, DodgeDetector
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CALIBRACIÓN
-# ═══════════════════════════════════════════════════════════════════════════════
+# ── Calibración ───────────────────────────────────────────────────────────────
 TARGET_RADIUS    = 80
 HIT_SLOP         = 30
-TARGET_LIFE_SECS = 2.0   # duración por defecto; sobreescribible por entrada del schedule
+TARGET_LIFE_SECS = 2.0
 HIT_LINGER       = 0.45
 DODGE_WINDOW     = 1.8
 DODGE_RESULT_T   = 1.2
@@ -43,32 +43,31 @@ HOOK_IMPACT_ANGLE =  60.0
 HOOK_RETURN_ANGLE =  58.0
 GANCHO_ELBOW_MAX  = 153.0
 
-GANCHO_WINDOW  = 0.3
-UPPER_WINDOW   = 0.3
-JAB_WINDOW     = 0.3
-CROSS_WINDOW   = 0.3
+GANCHO_WINDOW         = 0.3
+UPPER_WINDOW          = 0.3
+JAB_WINDOW            = 0.3
+CROSS_WINDOW          = 0.3
 TARGET_REACTION_DELAY = 0.35
-ENTRY_DURATION        = 0.25   # segundos que tarda el círculo en escalar de 0 a tamaño completo
+ENTRY_DURATION        = 0.25
 
-# ── Posiciones fijas por tipo de golpe (frame 640×480) ──────────────────────
-PUNCH_POS = {
-    "JAB":      (160, 240),   # lado izquierdo, altura media  (puño der en espejo)
-    "CROSS":    (480, 240),   # lado derecho,   altura media  (puño izq en espejo)
-    "UPPER_R":  (480, 140),   # lado derecho,   zona alta
-    "UPPER_L":  (160, 140),   # lado izquierdo, zona alta
-    "GANCHO_L": (535, 255),   # lado derecho extremo, altura media
-    "GANCHO_R": (105, 255),   # lado izquierdo extremo, altura media
+# ── Posiciones por golpe como fracción del frame (x_frac, y_frac) ────────────
+# Definidas en espacio normalizado; se escalan a self._w / self._h en tiempo de ejecución.
+_PUNCH_POS_NORM = {
+    "JAB":      (0.25, 0.50),
+    "CROSS":    (0.75, 0.50),
+    "UPPER_R":  (0.75, 0.29),
+    "UPPER_L":  (0.25, 0.29),
+    "GANCHO_L": (0.84, 0.53),
+    "GANCHO_R": (0.16, 0.53),
 }
 
-# ═══════════════════════════════════════════════════════════════════════════════
-
 PUNCH_COLOR = {
-    "JAB":      ( 50, 210,  50),
-    "CROSS":    (  0, 140, 255),
-    "UPPER_L":  (180,  50, 255),
-    "UPPER_R":  (180,  50, 255),
-    "GANCHO_L": (  0,  80, 255),
-    "GANCHO_R": (  0,  80, 255),
+    "JAB":      BOX_CLR,
+    "CROSS":    CYAN,
+    "UPPER_L":  ORANGE,
+    "UPPER_R":  ORANGE,
+    "GANCHO_L": RED,
+    "GANCHO_R": RED,
 }
 
 PUNCH_LABEL_ES = {
@@ -95,9 +94,6 @@ DODGE_HINT = {
     "AGACHA":    "AGACHA!",
 }
 
-# ── Module definitions ─────────────────────────────────────────────────────────
-# Cada entrada del schedule: (segundos_video, [golpes_simultáneos, ...])
-# Todos los golpes de una entrada aparecen a la vez. DODGE aparece al final.
 BOXING_MODULES = [
     {
         "video": "assets/videos/box/box1.mp4",
@@ -109,8 +105,8 @@ BOXING_MODULES = [
             (5.8,  ["CROSS"]),
             (7.2,  ["JAB"]),
             (8.5,  ["CROSS"]),
-            (10.0, ["JAB"], 2.0),
-            (11.0, ["CROSS"],2.0),
+            (10.0, ["JAB"],   2.0),
+            (11.0, ["CROSS"], 2.0),
         ],
     },
     {
@@ -143,11 +139,11 @@ BOXING_MODULES = [
         "video": "assets/videos/box/box4.mp4",
         "name":  "Modulo 4 - Jab+Cross+Esquive",
         "schedule": [
-            (1.8,  ["JAB", "CROSS", "DODGE"],2.1),
-            (3.9,  ["JAB", "CROSS", "DODGE"],2.5),
-            (6.4,  ["JAB", "CROSS", "DODGE"],2.3),
-            (8.7,  ["JAB", "CROSS", "DODGE"],2.4),
-            (11.2, ["JAB", "CROSS", "DODGE"],1.8),
+            (1.8,  ["JAB", "CROSS", "DODGE"], 2.1),
+            (3.9,  ["JAB", "CROSS", "DODGE"], 2.5),
+            (6.4,  ["JAB", "CROSS", "DODGE"], 2.3),
+            (8.7,  ["JAB", "CROSS", "DODGE"], 2.4),
+            (11.2, ["JAB", "CROSS", "DODGE"], 1.8),
         ],
     },
     {
@@ -156,17 +152,15 @@ BOXING_MODULES = [
         "schedule": [
             (2.0,  ["JAB", "CROSS", "DODGE"]),
             (4.8,  ["UPPER_R"]),
-            (5.8, ["UPPER_L", "DODGE"], 1.8),
-            
+            (5.8,  ["UPPER_L", "DODGE"], 1.8),
             (7.6,  ["JAB", "CROSS", "DODGE"], 2.0),
             (9.6,  ["UPPER_R"]),
-            (11.7, ["UPPER_L", "DODGE"],2.3),
+            (11.7, ["UPPER_L", "DODGE"], 2.3),
         ],
     },
 ]
 
 
-# ── Support classes ────────────────────────────────────────────────────────────
 class _Target:
     def __init__(self, cx: int, cy: int, radius: int, punch_type: str,
                  life_secs: float = TARGET_LIFE_SECS):
@@ -197,16 +191,15 @@ class _Popup:
 
     @property
     def render_y(self) -> int:
-        return int(self.y - (time.perf_counter() - self._born) * 80)
+        return int(self.y - (time.perf_counter() - self._born) * 120)
 
     @property
     def alpha(self) -> float:
         return max(0.0, 1.0 - (time.perf_counter() - self._born) / self.DURATION)
 
 
-# ── Game class ─────────────────────────────────────────────────────────────────
 class BoxingGame(BaseGame):
-    def __init__(self, frame_w: int = 640, frame_h: int = 480):
+    def __init__(self, frame_w: int = 1380, frame_h: int = 1080):
         self._w = frame_w
         self._h = frame_h
         self._left_arm     = ArmPunchState(GUARD_ANGLE,       IMPACT_ANGLE,       RETURN_ANGLE)
@@ -222,7 +215,10 @@ class BoxingGame(BaseGame):
         self._next: Optional[str] = None
         self.reset()
 
-    # ── State management ──────────────────────────────────────────────────────
+    def _punch_pos(self, key: str) -> Tuple[int, int]:
+        fx, fy = _PUNCH_POS_NORM[key]
+        return (int(fx * self._w), int(fy * self._h))
+
     def reset(self) -> None:
         self._next           = None
         self._score          = 0
@@ -243,10 +239,10 @@ class BoxingGame(BaseGame):
         self._dodge_was_armed = False
         self._dodge_resolved  = True
         self._dodge_active    = False
-        self._dodge_dir      = ""
-        self._dodge_armed_t  = 0.0
+        self._dodge_dir       = ""
+        self._dodge_armed_t   = 0.0
         self._dodge_result: Optional[bool] = None
-        self._dodge_result_t = 0.0
+        self._dodge_result_t  = 0.0
         self._left_arm.reset()
         self._right_arm.reset()
         self._left_upper.reset()
@@ -283,13 +279,12 @@ class BoxingGame(BaseGame):
         else:
             self._load_module(self._mod_idx)
 
-    # ── Spawn ─────────────────────────────────────────────────────────────────
     def _spawn_targets(self, punch_types: list) -> None:
-        """Spawn all punch types simultaneously at their fixed positions."""
         self._targets = [
-            _Target(*PUNCH_POS[pt], TARGET_RADIUS, pt)
+            _Target(*self._punch_pos(pt),
+                    int(TARGET_RADIUS * self._w / 640), pt)
             for pt in punch_types
-            if pt in PUNCH_POS
+            if pt in _PUNCH_POS_NORM
         ]
 
     def _all_targets_done(self, now: float) -> bool:
@@ -301,56 +296,49 @@ class BoxingGame(BaseGame):
         )
 
     def _all_wave_done(self, now: float) -> bool:
-        """Targets AND dodge (if any) must both be resolved before next wave."""
         return self._all_targets_done(now) and (not self._dodge_was_armed or self._dodge_resolved)
 
     def _arm_dodge(self, now: float) -> None:
         self._dodge_det.arm()
-        self._dodge_dir      = "AGACHA"
-        self._dodge_armed_t  = now
-        self._dodge_active   = True
+        self._dodge_dir       = "AGACHA"
+        self._dodge_armed_t   = now
+        self._dodge_active    = True
         self._dodge_was_armed = True
         self._dodge_resolved  = False
 
-    # ── Update ────────────────────────────────────────────────────────────────
     def update(self, frame: np.ndarray, landmarks: Optional[list],
                frame_w: int, frame_h: int) -> None:
         now = time.perf_counter()
 
         if self._next:
             return
-
         if self._video and self._video.is_done:
             self._advance_module()
             return
 
         vt = self._video.current_time if self._video else 0.0
 
-        # Nose tracking for dodge detector (always, so EMA stays warm)
         if landmarks:
             nose = landmarks[NOSE]
             self._dodge_det.track(nose.x, nose.y)
 
-        # ── Active dodge window (coexiste con los círculos activos) ──────────
         if self._dodge_active:
             detected = False
             if landmarks:
-                nose = landmarks[NOSE]
+                nose     = landmarks[NOSE]
                 detected = self._dodge_det.detect(nose.x, nose.y, self._dodge_dir)
             if detected:
-                self._score          += 25
-                self._dodge_result    = True
-                self._dodge_result_t  = now
-                self._dodge_active    = False
-                self._dodge_resolved  = True
+                self._score         += 25
+                self._dodge_result   = True
+                self._dodge_result_t = now
+                self._dodge_active   = False
+                self._dodge_resolved = True
             elif now - self._dodge_armed_t > DODGE_WINDOW:
-                self._dodge_result    = False
-                self._dodge_result_t  = now
-                self._dodge_active    = False
-                self._dodge_resolved  = True
-            # sin return — continúa a detección de golpes y targets
+                self._dodge_result   = False
+                self._dodge_result_t = now
+                self._dodge_active   = False
+                self._dodge_resolved = True
 
-        # ── Target expiry ─────────────────────────────────────────────────────
         for t in self._targets:
             if not t.hit and not t.expired and now - t.spawn_time > t.life_secs:
                 t.expired = True
@@ -358,31 +346,28 @@ class BoxingGame(BaseGame):
                 self._popups.append(_Popup(cx, cy, "MISS", RED))
                 self._ripples.append((cx, cy, now, False))
 
-        # ── Limpiar targets resueltos (hit+linger o expirados) ───────────────
         self._targets = [
             t for t in self._targets
             if not t.expired and
                not (t.hit and t.hit_time is not None and now - t.hit_time >= HIT_LINGER)
         ]
 
-        # ── Schedule: cada entrada dispara en cuanto pasa su timestamp ────────
-        # No depende del estado de los targets actuales — el video manda.
         sched = BOXING_MODULES[self._mod_idx]["schedule"]
         while (self._sched_idx < len(sched) and
                vt >= sched[self._sched_idx][0]):
-            entry = sched[self._sched_idx]
+            entry     = sched[self._sched_idx]
             steps     = entry[1]
             life_secs = entry[2] if len(entry) > 2 else TARGET_LIFE_SECS
             self._sched_idx += 1
+            scaled_r = int(TARGET_RADIUS * self._w / 640)
             self._targets.extend(
-                _Target(*PUNCH_POS[pt], TARGET_RADIUS, pt, life_secs)
+                _Target(*self._punch_pos(pt), scaled_r, pt, life_secs)
                 for pt in steps
-                if pt in PUNCH_POS
+                if pt in _PUNCH_POS_NORM
             )
             if "DODGE" in steps:
                 self._arm_dodge(now)
 
-        # ── Landmark extraction ───────────────────────────────────────────────
         self._wrists = [None, None]
         lw = rw = None
         if landmarks:
@@ -467,14 +452,14 @@ class BoxingGame(BaseGame):
             if lw is not None and now - self._lc_fire_time < CROSS_WINDOW:
                 punch_events.append((lw, "CROSS"))
 
-        # ── Hit detection — todos los targets activos ─────────────────────────
+        scaled_slop = int(HIT_SLOP * self._w / 640)
         for t in self._targets:
             if t.hit or t.expired:
                 continue
             if now - t.spawn_time < TARGET_REACTION_DELAY:
                 continue
             in_range = [(wp, det) for wp, det in punch_events
-                        if distance_2d(wp, t.center) <= t.radius + HIT_SLOP]
+                        if distance_2d(wp, t.center) <= t.radius + scaled_slop]
             if in_range:
                 target_group = _PUNCH_GROUP[t.punch_type]
                 chosen = next(
@@ -497,15 +482,12 @@ class BoxingGame(BaseGame):
         self._ripples = [(x, y, b, ok) for x, y, b, ok in self._ripples if now - b < 0.45]
         self._popups  = [p for p in self._popups if p.alive]
 
-    # ── Render ────────────────────────────────────────────────────────────────
     def render(self, frame: np.ndarray) -> None:
         now = time.perf_counter()
 
-        # Todos los targets activos
         for t in self._targets:
             age = now - t.spawn_time
 
-            # Entrada spring: 0 → 110% en 0.18s → settle 100% en 0.25s
             if age < 0.18:
                 entry_scale = age / 0.18 * 1.1
             elif age < ENTRY_DURATION:
@@ -514,13 +496,12 @@ class BoxingGame(BaseGame):
                 entry_scale = 1.0
             draw_radius = max(1, int(t.radius * entry_scale))
 
-            # Color vira a rojo en el último 30% de vida (aprox. último segundo)
             if not t.hit and not t.expired and age >= t.life_secs * 0.70:
                 u = min(1.0, (age - t.life_secs * 0.70) / (t.life_secs * 0.30))
                 draw_color = (
-                    int(t.color[0] * (1 - u)),                   # B → 0
-                    int(t.color[1] * (1 - u)),                   # G → 0
-                    int(t.color[2] + (255 - t.color[2]) * u),    # R → 255
+                    int(t.color[0] * (1 - u)),
+                    int(t.color[1] * (1 - u)),
+                    int(t.color[2] + (255 - t.color[2]) * u),
                 )
             else:
                 draw_color = t.color
@@ -532,7 +513,7 @@ class BoxingGame(BaseGame):
         # Ripple effects
         for x, y, born, ok in self._ripples:
             age   = now - born
-            r     = int(26 + age * 120)
+            r     = int(26 + age * 180)
             color = CYAN if ok else RED
             alpha = max(0.0, 1.0 - age / 0.45)
             if alpha > 0.05:
@@ -545,10 +526,10 @@ class BoxingGame(BaseGame):
             if p.alpha > 0.05:
                 ov = frame.copy()
                 draw_text(ov, p.text, (p.x - 30, p.render_y),
-                          scale=0.65, color=p.color, thickness=2)
+                          scale=0.9, color=p.color, thickness=2)
                 cv2.addWeighted(ov, p.alpha, frame, 1 - p.alpha, 0, frame)
 
-        # Active dodge overlay
+        # Dodge overlay
         if self._dodge_active:
             elapsed  = now - self._dodge_armed_t
             ratio    = max(0.0, 1.0 - elapsed / DODGE_WINDOW)
@@ -556,13 +537,13 @@ class BoxingGame(BaseGame):
             ov = frame.copy()
             cv2.rectangle(ov, (0, 0), (self._w, self._h), (0, 0, 180), -1)
             cv2.addWeighted(ov, 0.18, frame, 0.82, 0, frame)
-            (tw, _), _ = cv2.getTextSize(hint_txt, cv2.FONT_HERSHEY_SIMPLEX, 1.3, 3)
+            (tw, _), _ = cv2.getTextSize(hint_txt, cv2.FONT_HERSHEY_SIMPLEX, 1.8, 4)
             draw_text(frame, hint_txt,
                       (self._w // 2 - tw // 2, self._h // 2),
-                      scale=1.3, color=RED, thickness=3)
+                      scale=1.8, color=RED, thickness=4)
             draw_progress_bar(frame,
-                              (self._w // 2 - 100, self._h // 2 + 20),
-                              (200, 12), ratio, 1.0, fg_color=RED)
+                              (self._w // 2 - 150, self._h // 2 + 30),
+                              (300, 16), ratio, 1.0, fg_color=RED)
 
         # Dodge result flash
         if self._dodge_result is not None:
@@ -572,32 +553,37 @@ class BoxingGame(BaseGame):
                 color = GREEN if self._dodge_result else RED
                 txt   = "BIEN ESQUIVADO!" if self._dodge_result else "GOLPEADO!"
                 ov = frame.copy()
-                (tw, _), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 1.1, 3)
+                (tw, _), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 3)
                 draw_text(ov, txt,
-                          (self._w // 2 - tw // 2, self._h // 2 + 60),
-                          scale=1.1, color=color, thickness=3)
+                          (self._w // 2 - tw // 2, self._h // 2 + 80),
+                          scale=1.5, color=color, thickness=3)
                 cv2.addWeighted(ov, alpha, frame, 1 - alpha, 0, frame)
             else:
                 self._dodge_result = None
 
         # Wrist cursors
         for pt in self._wrists:
-            draw_wrist_cursor(frame, pt, color=YELLOW)
+            draw_wrist_cursor(frame, pt, color=BOX_CLR)
 
-        # HUD — score
-        draw_panel(frame, (0, 0, 190, 50), color=(10, 10, 40), alpha=0.65)
-        draw_text(frame, f"SCORE: {self._score}", (10, 35), scale=0.85, color=YELLOW)
+        # HUD — score chip (top-left)
+        draw_chip(frame, (20, 50), f"SCORE: {self._score}", color=BOX_CLR, scale=0.8)
 
-        # HUD — module name
+        # HUD — stepper (top-center, 5 modules)
+        total_mods  = len(BOXING_MODULES)
+        stepper_w   = (total_mods - 1) * 30
+        stepper_x   = self._w // 2 - stepper_w // 2
+        draw_stepper(frame, (stepper_x, 30), total_mods, self._mod_idx,
+                     color=BOX_CLR, dot_r=10, spacing=30)
+
+        # HUD — module name chip (top-right)
         mod_name = BOXING_MODULES[self._mod_idx]["name"] if self._mod_idx < len(BOXING_MODULES) else ""
-        (cw, _), _ = cv2.getTextSize(mod_name, cv2.FONT_HERSHEY_SIMPLEX, 0.52, 1)
-        draw_panel(frame, (self._w - cw - 20, 0, cw + 20, 40), color=(10, 10, 40), alpha=0.65)
-        draw_text(frame, mod_name, (self._w - cw - 10, 28), scale=0.52, color=CYAN, thickness=1)
+        (cw, ch), _ = cv2.getTextSize(mod_name, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+        draw_chip(frame, (self._w - cw - 36, 50), mod_name, color=BOX_CLR, scale=0.6)
 
     @staticmethod
     def _draw_punch_label(frame: np.ndarray, t: "_Target") -> None:
         label = PUNCH_LABEL_ES.get(t.punch_type, t.punch_type)
-        scale = 0.55
+        scale = 0.7
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, scale, 2)
         tx = t.center[0] - tw // 2
         ty = t.center[1] + th // 2
