@@ -212,22 +212,16 @@ class WebPoseChallenge:
     @staticmethod
     def _result_message(progress: float) -> str:
         if progress >= 0.9:
-            return "RESPIRACION EN CALMA"
+            return "EXCELENTE"
         if progress >= 0.7:
-            return "MUY BUENA ESTABILIDAD"
+            return "MUY BIEN"
         if progress >= 0.45:
-            return "SIGUE RESPIRANDO"
-        return "VUELVE A TU CENTRO"
+            return "BIEN"
+        return "PUEDES HACERLO MEJOR"
 
     @staticmethod
     def _breath_message(progress: float) -> str:
-        if progress >= 0.9:
-            return "Inhala, exhala, tu cuerpo encontro quietud."
-        if progress >= 0.7:
-            return "Respira profundo, sostuviste con buena presencia."
-        if progress >= 0.45:
-            return "Inhala lento, exhala suave, vuelve a intentarlo."
-        return "Pausa, respira y regresa con calma."
+        return WebPoseChallenge._result_message(progress)
 
     def _summary(self) -> dict:
         total_points = sum(result["points"] for result in self._pose_results)
@@ -244,12 +238,12 @@ class WebPoseChallenge:
     @staticmethod
     def _summary_message(percent: int) -> str:
         if percent >= 90:
-            return "TU RESPIRACION FLORECE EN EQUILIBRIO"
+            return "EXCELENTE"
         if percent >= 75:
-            return "CALMA FIRME, ENERGIA PRESENTE"
+            return "MUY BIEN"
         if percent >= 60:
-            return "SIGUE INHALANDO, SIGUE CRECIENDO"
-        return "CADA RESPIRACION ES UN NUEVO COMIENZO"
+            return "BIEN"
+        return "PUEDES HACERLO MEJOR"
 
     def to_json(self) -> dict:
         if self._idx >= len(YOGA_POSES):

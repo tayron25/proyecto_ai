@@ -570,10 +570,6 @@ export default function App() {
                 </article>
               ))}
             </div>
-            <div className="boxingSummaryActions aerobicsSummaryActions">
-              <button type="button" onClick={exitToMenu}>Salir al menu</button>
-              <button type="button" onClick={replayCurrent}>Volver a bailar</button>
-            </div>
             {summaryClapPrompt}
           </div>
         )}
@@ -620,10 +616,6 @@ export default function App() {
                 </article>
               ))}
             </div>
-            <div className="boxingSummaryActions">
-              <button type="button" onClick={exitToMenu}>Salir al menu</button>
-              <button type="button" onClick={replayCurrent}>Volver a practicar</button>
-            </div>
             {summaryClapPrompt}
           </div>
         )}
@@ -656,10 +648,6 @@ export default function App() {
                   <em>{result.rating}</em>
                 </article>
               ))}
-            </div>
-            <div className="boxingSummaryActions">
-              <button type="button" onClick={exitToMenu}>Salir al menu</button>
-              <button type="button" onClick={replayBoxing}>Volver a jugar</button>
             </div>
             {summaryClapPrompt}
           </div>

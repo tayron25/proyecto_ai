@@ -250,7 +250,7 @@ Si aparece una gran cantidad de cambios dentro de `venv/` o `node_modules/`, no 
 - Se corrigio la pantalla de resultado entre modulos de Box para que dure 7 segundos y luego permita continuar al mini contador del siguiente modulo; el temporizador ahora depende del id estable del resultado.
 - Se bajo la pantalla de resultado entre modulos de Box a 4 segundos y se bloqueo el mini contador hasta que termine esa calificacion, evitando que ambas pantallas se superpongan.
 - Se compacto la pantalla final de Box para que el mensaje principal, porcentajes, barras y botones de menu/reintentar entren completos en pantalla.
-- Se ajustaron los rangos de calificacion final de Box: 0-59 `PUEDES HACERLO MEJOR`, 60-74 `BIEN`, 75-89 `MUY BIEN`, 90-100 `EXCELENTE, ERES UN GUERRERO`.
+- Se ajustaron los rangos de calificacion final de Box: 0-59 `PUEDES HACERLO MEJOR`, 60-74 `BIEN`, 75-89 `MUY BIEN`, 90-100 `EXCELENTE`.
 - Se agrego layout visual especial para Yoga: video guia a la izquierda, panel de camara/skeleton neon a la derecha, barra inferior de 10 segundos basada en `activity.progress`, y feedback simple de estabilidad sin el recuadro grande de condiciones.
 - Se agrego puntuacion web para Yoga por opcion/lado segun segundos sostenidos de 10s, pantallas zen de resultado por postura/opcion, resumen final con puntaje total y frases de respiracion; no se cambio `games/pose_challenge.py`.
 - Se bloqueo la reacumulacion de tiempo en Yoga para una opcion/lado ya puntuado, evitando duplicar puntos mientras el video aun no cambia al siguiente lado.
@@ -287,5 +287,6 @@ Si aparece una gran cantidad de cambios dentro de `venv/` o `node_modules/`, no 
 - Se ajustaron las posiciones de los targets de gancho en `games/boxing.py`: `GANCHO_L` y `GANCHO_R` ahora aparecen un poco mas hacia el centro y mas arriba; web hereda el cambio desde `PUNCH_POS`.
 - Se agrego salida por gesto en resumen web: al terminar Box, Yoga o Aerobico se puede volver al menu con aplauso sostenido de 3.5 segundos; `backend/session.py` detecta el gesto y `frontend/src/App.tsx` muestra la barra de progreso.
 - Se puso el video guia de Box en modo espejo solo en frontend mediante CSS (`.appShell.boxingMode .trainerVideo { transform: scaleX(-1); }`), sin modificar los archivos MP4 ni afectar Yoga/Aerobico.
+- Se simplificaron los mensajes finales de Yoga a `EXCELENTE`, `MUY BIEN`, `BIEN` y `PUEDES HACERLO MEJOR`; tambien se quitaron los botones de resumen final en Box/Yoga/Aerobico para dejar solo el regreso al menu por aplauso, enmarcado con el color de cada nivel.
 - Se mantiene el modo escritorio con `python main.py`.
 - Se agrego esta guia y la regla de mantenerla actualizada con cada cambio.

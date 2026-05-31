@@ -402,7 +402,7 @@ class WebBoxingGame:
     @staticmethod
     def _rating(percent: int) -> str:
         if percent >= 90:
-            return "EXCELENTE, ERES UN GUERRERO"
+            return "EXCELENTE"
         if percent >= 75:
             return "MUY BIEN"
         if percent >= 60:
