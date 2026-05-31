@@ -72,6 +72,7 @@ export default function App() {
   const isYogaSummary = Boolean(hasYogaSummary && !yogaPoseResult && !pendingYogaPoseResult);
   const isMenu = gameState?.state === "menu";
   const isSummary = isBoxingSummary || isYogaSummary || isAerobicsSummary;
+  const summaryClapRatio = Math.max(0, Math.min(gameState?.summaryClap?.ratio ?? 0, 1));
   const isPreparing = Boolean(prep?.active && isPlaying);
   const isPausedOverlay = isPreparing || isShowingBoxingResult || pendingBoxingResult || isBoxingSummary || Boolean(yogaPoseResult) || pendingYogaPoseResult || isYogaSummary || isAerobicsSummary;
 
@@ -413,6 +414,15 @@ export default function App() {
     dispatchCommand("reset");
   }, [dispatchCommand]);
 
+  const summaryClapPrompt = isSummary ? (
+    <div className="summaryClapPrompt">
+      <span>Aplaude {gameState?.summaryClap?.holdSeconds?.toFixed(1) ?? "3.5"}s para volver al menu</span>
+      <i aria-hidden="true">
+        <b style={{ transform: `scaleX(${summaryClapRatio})` }} />
+      </i>
+    </div>
+  ) : null;
+
   return (
     <main className={`appShell ${isPlaying ? "playMode" : "menuMode"} ${isBoxing ? "boxingMode" : ""} ${isYoga ? "yogaMode" : ""} ${isAerobics ? "aerobicsMode" : ""}`}>
       <div className="cameraFpsBadge">CAM {cameraFps || "--"} FPS</div>
@@ -564,6 +574,7 @@ export default function App() {
               <button type="button" onClick={exitToMenu}>Salir al menu</button>
               <button type="button" onClick={replayCurrent}>Volver a bailar</button>
             </div>
+            {summaryClapPrompt}
           </div>
         )}
 
@@ -613,6 +624,7 @@ export default function App() {
               <button type="button" onClick={exitToMenu}>Salir al menu</button>
               <button type="button" onClick={replayCurrent}>Volver a practicar</button>
             </div>
+            {summaryClapPrompt}
           </div>
         )}
 
@@ -649,6 +661,7 @@ export default function App() {
               <button type="button" onClick={exitToMenu}>Salir al menu</button>
               <button type="button" onClick={replayBoxing}>Volver a jugar</button>
             </div>
+            {summaryClapPrompt}
           </div>
         )}
 

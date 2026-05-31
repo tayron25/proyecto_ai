@@ -10,11 +10,13 @@ from backend.web_aerobics import WebAerobics
 from backend.web_menu import WebMenu
 from backend.web_pose_challenge import WebPoseChallenge
 from core.pose_engine import PoseEngine
+from games.menu import CLAP_DIST
 from utils.landmarks import LEFT_WRIST, POSE_CONNECTIONS, RIGHT_WRIST
 
 FRAME_W = 640
 FRAME_H = 480
 MODEL_PATH = "assets/models/pose_landmarker_lite.task"
+SUMMARY_CLAP_HOLD_SECS = 3.5
 
 
 def _decode_frame(data_url: str) -> Optional[np.ndarray]:
@@ -68,6 +70,8 @@ class GameSession:
         self._last_t = time.perf_counter()
         self._fps = 0.0
         self._frames = 0
+        self._summary_clap_t: Optional[float] = None
+        self._summary_clap_ratio = 0.0
 
     def handle(self, payload: dict[str, Any]) -> dict[str, Any]:
         command = payload.get("command")
@@ -107,6 +111,13 @@ class GameSession:
             self._tick_fps()
 
         landmarks = self._engine.landmarks
+        if self._summary_active():
+            self._update_summary_clap(landmarks)
+            if self._state == "menu":
+                return self._state_json(landmarks)
+        else:
+            self._reset_summary_clap()
+
         if paused:
             return self._state_json(landmarks)
 
@@ -133,6 +144,46 @@ class GameSession:
                 self._menu.reset()
 
         return self._state_json(landmarks)
+
+    def _summary_active(self) -> bool:
+        if self._state == "boxing":
+            return self._boxing.next_state == "summary"
+        if self._state == "pose_challenge":
+            return self._pose_challenge.next_state == "summary"
+        if self._state == "aerobics":
+            return self._aerobics.next_state == "summary"
+        return False
+
+    def _clapping(self, landmarks: Optional[list]) -> bool:
+        if not landmarks:
+            return False
+        lw = landmarks[LEFT_WRIST]
+        rw = landmarks[RIGHT_WRIST]
+        return abs(lw.x - rw.x) < CLAP_DIST
+
+    def _update_summary_clap(self, landmarks: Optional[list]) -> None:
+        now = time.perf_counter()
+        if self._clapping(landmarks):
+            if self._summary_clap_t is None:
+                self._summary_clap_t = now
+            self._summary_clap_ratio = min((now - self._summary_clap_t) / SUMMARY_CLAP_HOLD_SECS, 1.0)
+            if self._summary_clap_ratio >= 1.0:
+                self._return_to_menu()
+        else:
+            self._reset_summary_clap()
+
+    def _reset_summary_clap(self) -> None:
+        self._summary_clap_t = None
+        self._summary_clap_ratio = 0.0
+
+    def _return_to_menu(self) -> None:
+        self._state = "menu"
+        self._boxing.reset()
+        self._pose_challenge.reset()
+        self._aerobics.reset()
+        self._menu.reset()
+        self._last_message = None
+        self._reset_summary_clap()
 
     def _handle_menu_next_state(self) -> None:
         next_state = self._menu.consume_next_state()
@@ -194,7 +245,17 @@ class GameSession:
             "boxing": game_state.get("boxing"),
             "yoga": game_state.get("yoga"),
             "aerobics": game_state.get("aerobics"),
+            "summaryClap": self._summary_clap_json(),
             "menu": self._menu.to_json() if self._state == "menu" else None,
+        }
+
+    def _summary_clap_json(self) -> Optional[dict[str, float | bool]]:
+        if not self._summary_active():
+            return None
+        return {
+            "active": True,
+            "ratio": self._summary_clap_ratio,
+            "holdSeconds": SUMMARY_CLAP_HOLD_SECS,
         }
 
     def _tick_fps(self) -> None:

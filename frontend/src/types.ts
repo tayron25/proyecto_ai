@@ -99,6 +99,11 @@ export type GameState = {
   aerobics?: {
     summary?: AerobicsSummary | null;
   };
+  summaryClap?: {
+    active: boolean;
+    ratio: number;
+    holdSeconds: number;
+  } | null;
   menu?: {
     title: string;
     hint: string;

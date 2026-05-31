@@ -42,6 +42,7 @@ Carpeta: `backend/`
   - `WS /ws/game`: canal realtime para frames/comandos del frontend y estado del juego.
   - `GET /assets/...`: sirve archivos de `assets/`.
 - `backend/session.py`: coordina sesion web, decode de frames, `PoseEngine`, estado actual y respuestas JSON.
+  - Durante pantallas finales de resumen acepta aplauso sostenido de 3.5s para volver al menu.
 - `backend/web_menu.py`: version serializable del menu con la misma logica de `games/menu.py` (muneca sobre boton + aplauso sostenido).
 - `backend/web_boxing.py`: version serializable de la logica de boxeo para React. Reutiliza constantes/reglas de `games/boxing.py` y expone targets, popups, ripples, esquive y metricas para el render web. No reemplaza `games/boxing.py`.
 - `backend/web_pose_challenge.py`: version serializable de Yoga usando condiciones y tiempos de `games/pose_challenge.py`.
@@ -60,6 +61,7 @@ Carpeta: `frontend/`
 - Stack: Vite + React + TypeScript.
 - `frontend/src/App.tsx`: layout principal y loop de captura/envio de frames.
   - Muestra un indicador pequeno fijo arriba con los FPS aproximados de la camara.
+  - En resumen final de Box/Yoga/Aerobico muestra progreso de aplauso sostenido para volver al menu.
 - `frontend/src/hooks/useCamera.ts`: acceso a webcam con `getUserMedia`.
 - `frontend/src/hooks/useGameSocket.ts`: WebSocket con el backend.
 - `frontend/src/components/CameraCanvas.tsx`: render de camara, skeleton, targets y mensajes.
@@ -283,5 +285,6 @@ Si aparece una gran cantidad de cambios dentro de `venv/` o `node_modules/`, no 
 - Se completo la integracion web de Box para serializar y renderizar efectos que estaban en `games/boxing.py`: ripples, popups flotantes con alpha, halo de hit y overlay/progreso/resultado de esquive, manteniendo la deteccion y tiempos del juego original en backend.
 - Se ajusto Yoga en `games/pose_challenge.py`: el modulo 2 `Inclinacion Lateral` ya no exige rodillas rectas en ninguna de sus dos opciones; web hereda el cambio mediante `backend/web_pose_challenge.py`.
 - Se ajustaron las posiciones de los targets de gancho en `games/boxing.py`: `GANCHO_L` y `GANCHO_R` ahora aparecen un poco mas hacia el centro y mas arriba; web hereda el cambio desde `PUNCH_POS`.
+- Se agrego salida por gesto en resumen web: al terminar Box, Yoga o Aerobico se puede volver al menu con aplauso sostenido de 3.5 segundos; `backend/session.py` detecta el gesto y `frontend/src/App.tsx` muestra la barra de progreso.
 - Se mantiene el modo escritorio con `python main.py`.
 - Se agrego esta guia y la regla de mantenerla actualizada con cada cambio.
