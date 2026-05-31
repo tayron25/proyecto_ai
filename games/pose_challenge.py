@@ -78,16 +78,12 @@ YOGA_POSES: List[Dict] = [
                 ("y_cmp", "rw_y", "<", "nose_y",  "Mano der sobre cabeza"),
                 ("angle", "right_elbow", ">", 150, "Codo der recto"),
                 ("y_cmp", "lw_y", ">", "lh_y",    "Mano izq bajo cadera"),
-                ("angle", "left_knee",   ">", 160, "Rodilla izq recta"),
-                ("angle", "right_knee",  ">", 160, "Rodilla der recta"),
             ],
             # Option B: lean right — left arm up, right hand rests on leg
             [
                 ("y_cmp", "lw_y", "<", "nose_y",  "Mano izq sobre cabeza"),
                 ("angle", "left_elbow",  ">", 150, "Codo izq recto"),
                 ("y_cmp", "rw_y", ">", "rh_y",    "Mano der bajo cadera"),
-                ("angle", "left_knee",   ">", 160, "Rodilla izq recta"),
-                ("angle", "right_knee",  ">", 160, "Rodilla der recta"),
             ],
         ],
     },

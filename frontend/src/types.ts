@@ -24,6 +24,23 @@ export type GameMessage = {
   x: number;
   y: number;
   kind: "good" | "bad" | "dodge" | string;
+  alpha?: number;
+};
+
+export type BoxingRipple = {
+  x: number;
+  y: number;
+  radius: number;
+  ok: boolean;
+  alpha: number;
+};
+
+export type BoxingDodgeState = {
+  active: boolean;
+  hint: string;
+  progress: number;
+  result?: boolean | null;
+  resultAlpha: number;
 };
 
 export type GameState = {
@@ -68,6 +85,8 @@ export type GameState = {
     expected: number;
     lastResult?: BoxingModuleResult | null;
     summary?: BoxingSummary | null;
+    ripples?: BoxingRipple[];
+    dodge?: BoxingDodgeState;
   };
   yoga?: {
     heldSeconds?: number;

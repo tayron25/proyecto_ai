@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
-import type { GameState, Target } from "../types";
+import type { BoxingRipple, GameState, Target } from "../types";
 
 type Props = {
   source: RefObject<HTMLVideoElement | null>;
@@ -67,10 +67,16 @@ export function CameraCanvas({ source, gameState }: Props) {
         }
         drawSkeleton(ctx, gameState, viewport, isBoxing, isYoga, yogaOk, isAerobics, isMenu);
         gameState?.targets.forEach((target) => drawTarget(ctx, target, viewport));
+        if (isBoxing) {
+          gameState?.boxing?.ripples?.forEach((ripple) => drawBoxingRipple(ctx, ripple, viewport));
+          drawBoxingDodge(ctx, gameState, width, height, viewport);
+        }
         if (!isYoga && !isAerobics) {
           drawActivityPanel(ctx, gameState, width, height);
         }
         gameState?.messages.forEach((message) => {
+          ctx.save();
+          ctx.globalAlpha = message.alpha ?? 1;
           ctx.font = message.kind === "dodge" ? "700 36px Arial" : "700 24px Arial";
           ctx.textAlign = "center";
           ctx.lineWidth = 5;
@@ -79,6 +85,7 @@ export function CameraCanvas({ source, gameState }: Props) {
           const point = mapSourcePoint(message.x, message.y, viewport);
           ctx.strokeText(message.text, point.x, point.y);
           ctx.fillText(message.text, point.x, point.y);
+          ctx.restore();
         });
       }
       requestAnimationFrame(draw);
@@ -452,12 +459,21 @@ function drawTarget(ctx: CanvasRenderingContext2D, target: Target, viewport: Vie
   const radius = Math.max(1, target.radius * entryScale * viewport.scale);
   ctx.save();
   ctx.globalAlpha = target.hit ? 0.55 : 1;
+  if (target.hit) {
+    ctx.fillStyle = "#ffff00";
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius + 12 * viewport.scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.fillStyle = color;
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, Math.max(4, radius / 2), 0, Math.PI * 2);
   ctx.stroke();
   if (!target.hit && entryScale >= 1) {
     ctx.fillStyle = "#fff";
@@ -470,4 +486,61 @@ function drawTarget(ctx: CanvasRenderingContext2D, target: Target, viewport: Vie
     ctx.fillText(target.label, point.x, point.y);
   }
   ctx.restore();
+}
+
+function drawBoxingRipple(
+  ctx: CanvasRenderingContext2D,
+  ripple: BoxingRipple,
+  viewport: Viewport,
+) {
+  if (ripple.alpha <= 0.05) {
+    return;
+  }
+  const point = mapSourcePoint(ripple.x, ripple.y, viewport);
+  ctx.save();
+  ctx.globalAlpha = ripple.alpha;
+  ctx.strokeStyle = ripple.ok ? "#00ffff" : "#ff4c62";
+  ctx.lineWidth = Math.max(2, 2 * viewport.scale);
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, ripple.radius * viewport.scale, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBoxingDodge(
+  ctx: CanvasRenderingContext2D,
+  gameState: GameState | null,
+  canvasW: number,
+  canvasH: number,
+  viewport: Viewport,
+) {
+  const dodge = gameState?.boxing?.dodge;
+  if (!dodge?.active && dodge?.result === undefined) {
+    return;
+  }
+
+  if (dodge?.active) {
+    ctx.save();
+    ctx.fillStyle = "rgba(180,0,0,.18)";
+    ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.restore();
+
+    const center = mapSourcePoint(320, 260, viewport);
+    drawProgress(ctx, center.x - 100 * viewport.scale, center.y + 16 * viewport.scale, 200 * viewport.scale, 12 * viewport.scale, dodge.progress, "#ff4c62");
+  }
+
+  if (dodge?.result !== null && dodge?.result !== undefined && dodge.resultAlpha > 0.05) {
+    const point = mapSourcePoint(320, 300, viewport);
+    ctx.save();
+    ctx.globalAlpha = dodge.resultAlpha;
+    ctx.font = "700 32px Arial";
+    ctx.textAlign = "center";
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "rgba(0,0,0,.78)";
+    ctx.fillStyle = dodge.result ? "#40f47c" : "#ff4c62";
+    const text = dodge.result ? "BIEN ESQUIVADO!" : "GOLPEADO!";
+    ctx.strokeText(text, point.x, point.y);
+    ctx.fillText(text, point.x, point.y);
+    ctx.restore();
+  }
 }

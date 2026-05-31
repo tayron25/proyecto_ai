@@ -56,8 +56,8 @@ PUNCH_POS = {
     "CROSS":    (480, 240),   # lado derecho,   altura media  (puño izq en espejo)
     "UPPER_R":  (480, 140),   # lado derecho,   zona alta
     "UPPER_L":  (160, 140),   # lado izquierdo, zona alta
-    "GANCHO_L": (535, 255),   # lado derecho extremo, altura media
-    "GANCHO_R": (105, 255),   # lado izquierdo extremo, altura media
+    "GANCHO_L": (500, 225),   # lado derecho, un poco mas centrado y arriba
+    "GANCHO_R": (140, 225),   # lado izquierdo, un poco mas centrado y arriba
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -155,12 +155,12 @@ BOXING_MODULES = [
         "name":  "Modulo 5 - Combos Mixtos",
         "schedule": [
             (2.0,  ["JAB", "CROSS", "DODGE"]),
-            (4.8,  ["UPPER_R"]),
-            (5.8, ["UPPER_L", "DODGE"], 1.8),
+            (4.8,  ["UPPER_L"]),
+            (5.8, ["UPPER_R", "DODGE"], 1.8),
             
             (7.6,  ["JAB", "CROSS", "DODGE"], 2.0),
-            (9.6,  ["UPPER_R"]),
-            (11.7, ["UPPER_L", "DODGE"],2.3),
+            (9.6,  ["UPPER_L"]),
+            (11.7, ["UPPER_R", "DODGE"],2.3),
         ],
     },
 ]

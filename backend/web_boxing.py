@@ -77,6 +77,38 @@ class Popup:
     color: str
     born: float = field(default_factory=time.perf_counter)
 
+    @property
+    def alive(self) -> bool:
+        return time.perf_counter() - self.born < 0.5
+
+    def to_json(self) -> dict:
+        age = time.perf_counter() - self.born
+        return {
+            "text": self.text,
+            "x": self.x,
+            "y": int(self.y - age * 80),
+            "kind": self.color,
+            "alpha": max(0.0, 1.0 - age / 0.5),
+        }
+
+
+@dataclass
+class Ripple:
+    x: int
+    y: int
+    born: float
+    ok: bool
+
+    def to_json(self) -> dict:
+        age = time.perf_counter() - self.born
+        return {
+            "x": self.x,
+            "y": self.y,
+            "radius": int(26 + age * 120),
+            "ok": self.ok,
+            "alpha": max(0.0, 1.0 - age / 0.45),
+        }
+
 
 class WebBoxingGame:
     def __init__(self, frame_w: int = 640, frame_h: int = 480) -> None:
@@ -95,8 +127,10 @@ class WebBoxingGame:
     def reset(self) -> None:
         self._next: Optional[str] = None
         self._score = 0
+        self._target_id = 0
         self._targets: list[Target] = []
         self._popups: list[Popup] = []
+        self._ripples: list[Ripple] = []
         self._wrists: list[Optional[tuple[int, int]]] = [None, None]
         self._last_la = 0.0
         self._last_ra = 0.0
@@ -138,10 +172,12 @@ class WebBoxingGame:
             self._next = "summary"
             self._targets = []
             self._popups = []
+            self._ripples = []
             return
         self._sched_idx = 0
         self._targets = []
         self._popups = []
+        self._ripples = []
         self._module_correct = 0
         self._module_failed = 0
         self._combo = 0
@@ -184,6 +220,7 @@ class WebBoxingGame:
                 target.expired = True
                 self._register_failure()
                 self._popups.append(Popup("MISS", target.center[0], target.center[1], "bad"))
+                self._ripples.append(Ripple(target.center[0], target.center[1], now, False))
 
         self._targets = [
             target
@@ -232,11 +269,16 @@ class WebBoxingGame:
                 self._score += 10
                 self._register_success()
                 self._popups.append(Popup("+10", target.center[0], target.center[1], "good"))
+                self._ripples.append(Ripple(target.center[0], target.center[1], now, True))
             else:
                 self._register_failure()
                 self._popups.append(Popup("MAL", target.center[0], target.center[1], "bad"))
+                self._ripples.append(Ripple(target.center[0], target.center[1], now, False))
 
-        self._popups = [popup for popup in self._popups if now - popup.born < 0.7]
+        self._ripples = [ripple for ripple in self._ripples if now - ripple.born < 0.45]
+        self._popups = [popup for popup in self._popups if popup.alive]
+        if self._dodge_result is not None and now - self._dodge_result_t >= DODGE_RESULT_T:
+            self._dodge_result = None
 
     def _detect_punches(
         self,
@@ -399,7 +441,7 @@ class WebBoxingGame:
     def to_json(self) -> dict:
         module_idx = min(self._mod_idx, len(BOXING_MODULES) - 1)
         module = BOXING_MODULES[module_idx] if 0 <= module_idx < len(BOXING_MODULES) else None
-        messages = [{"text": popup.text, "x": popup.x, "y": popup.y, "kind": popup.color} for popup in self._popups]
+        messages = [popup.to_json() for popup in self._popups]
         if self._dodge_active:
             messages.append({"text": DODGE_HINT.get(self._dodge_dir, "ESQUIVA!"), "x": 320, "y": 240, "kind": "dodge"})
         elif self._dodge_result is not None and time.perf_counter() - self._dodge_result_t < DODGE_RESULT_T:
@@ -428,6 +470,8 @@ class WebBoxingGame:
                 "expected": self._expected_actions(),
                 "lastResult": self._last_result,
                 "summary": self._summary() if self._next == "summary" else None,
+                "ripples": [ripple.to_json() for ripple in self._ripples],
+                "dodge": self._dodge_json(now),
             },
             "targets": [
                 {
@@ -455,6 +499,16 @@ class WebBoxingGame:
         if age < ENTRY_DURATION:
             return 1.1 - 0.1 * ((age - 0.18) / (ENTRY_DURATION - 0.18))
         return 1.0
+
+    def _dodge_json(self, now: float) -> dict:
+        result_visible = self._dodge_result is not None and now - self._dodge_result_t < DODGE_RESULT_T
+        return {
+            "active": self._dodge_active,
+            "hint": DODGE_HINT.get(self._dodge_dir, "ESQUIVA!"),
+            "progress": max(0.0, 1.0 - (now - self._dodge_armed_t) / DODGE_WINDOW) if self._dodge_active else 0.0,
+            "result": self._dodge_result if result_visible else None,
+            "resultAlpha": max(0.0, 1.0 - (now - self._dodge_result_t) / DODGE_RESULT_T) if result_visible else 0.0,
+        }
 
     @property
     def next_state(self) -> Optional[str]:

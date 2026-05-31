@@ -43,7 +43,7 @@ Carpeta: `backend/`
   - `GET /assets/...`: sirve archivos de `assets/`.
 - `backend/session.py`: coordina sesion web, decode de frames, `PoseEngine`, estado actual y respuestas JSON.
 - `backend/web_menu.py`: version serializable del menu con la misma logica de `games/menu.py` (muneca sobre boton + aplauso sostenido).
-- `backend/web_boxing.py`: version serializable de la logica de boxeo para React. No reemplaza `games/boxing.py`.
+- `backend/web_boxing.py`: version serializable de la logica de boxeo para React. Reutiliza constantes/reglas de `games/boxing.py` y expone targets, popups, ripples, esquive y metricas para el render web. No reemplaza `games/boxing.py`.
 - `backend/web_pose_challenge.py`: version serializable de Yoga usando condiciones y tiempos de `games/pose_challenge.py`.
 - `backend/web_aerobics.py`: version serializable de Aerobicos usando checkpoints y conteo de `games/aerobics.py`.
 
@@ -63,6 +63,7 @@ Carpeta: `frontend/`
 - `frontend/src/hooks/useCamera.ts`: acceso a webcam con `getUserMedia`.
 - `frontend/src/hooks/useGameSocket.ts`: WebSocket con el backend.
 - `frontend/src/components/CameraCanvas.tsx`: render de camara, skeleton, targets y mensajes.
+  - En Box tambien dibuja los efectos serializados por backend: entrada/hit de targets, ripples, popups y overlay/progreso de esquive.
 - `frontend/src/components/MainMenu.tsx`: menu web visual tipo landing, pero usando el estado/rectangulos calculados por `backend/web_menu.py`.
 - `frontend/src/components/TrainerVideo.tsx`: video de entrenamiento servido desde backend.
 - `frontend/src/types.ts`: contrato TypeScript del estado recibido del backend.
@@ -279,5 +280,8 @@ Si aparece una gran cantidad de cambios dentro de `venv/` o `node_modules/`, no 
 - Se ajusto el menu principal para que las disciplinas usen colores por nivel: Box verde neon, Yoga rosa neon y Aerobico amarillo neon; tambien se aumento contraste, tamano y brillo de los textos descriptivos debajo de cada nombre.
 - Se ajusto el texto blanco principal del menu para que use solo brillo directo tipo neon, sin recuadro ni luz de fondo de color.
 - Se agrego un indicador pequeno fijo arriba de todo que muestra los FPS aproximados de la camara en frontend.
+- Se completo la integracion web de Box para serializar y renderizar efectos que estaban en `games/boxing.py`: ripples, popups flotantes con alpha, halo de hit y overlay/progreso/resultado de esquive, manteniendo la deteccion y tiempos del juego original en backend.
+- Se ajusto Yoga en `games/pose_challenge.py`: el modulo 2 `Inclinacion Lateral` ya no exige rodillas rectas en ninguna de sus dos opciones; web hereda el cambio mediante `backend/web_pose_challenge.py`.
+- Se ajustaron las posiciones de los targets de gancho en `games/boxing.py`: `GANCHO_L` y `GANCHO_R` ahora aparecen un poco mas hacia el centro y mas arriba; web hereda el cambio desde `PUNCH_POS`.
 - Se mantiene el modo escritorio con `python main.py`.
 - Se agrego esta guia y la regla de mantenerla actualizada con cada cambio.
