@@ -5,8 +5,7 @@ from typing import Optional, Dict, List, Tuple
 
 from games.base_game import BaseGame
 from core.renderer import (
-    draw_text, draw_progress_bar, draw_panel, draw_chip, draw_hold_ring,
-    BG, YOGA_CLR, INK, INK_DIM, LINE,
+    draw_text, draw_progress_bar, draw_panel,
     WHITE, GREEN, RED, YELLOW, CYAN, ORANGE,
 )
 from core.video_player import VideoPlayer
@@ -21,9 +20,15 @@ from utils.landmarks import (
 )
 from utils.math_utils import calc_angle
 
-HOLD_SECS      = 10.0
-SUCCESS_LINGER = 1.8
+HOLD_SECS      = 10.0   # seconds user must hold the pose
+SUCCESS_LINGER = 1.8    # flash duration after completing a pose section
 
+# ── Condition types ──────────────────────────────────────────────────────────
+# ("angle",  data_key,  ">"|"<",  threshold_degrees,  "label")
+# ("y_cmp",  key_a,     "<"|">",  key_b,               "label")
+#   y_cmp: smaller Y = higher on screen (MediaPipe normalized Y, 0=top)
+# ("near",   key_a,     key_b,    threshold,            "label")
+#   near: abs(data[key_a] - data[key_b]) < threshold
 
 def _check(data: dict, cond: tuple) -> bool:
     kind = cond[0]
@@ -39,6 +44,10 @@ def _check(data: dict, cond: tuple) -> bool:
     return False
 
 
+# ── Yoga pose definitions ────────────────────────────────────────────────────
+# Each pose: name, description, video, option_timestamps, options (list of condition lists).
+# option_timestamps[i] = video time (seconds) when option i becomes active.
+# Timer starts when ALL conditions of the currently active option are met simultaneously.
 YOGA_POSES: List[Dict] = [
     {
         "name":              "Saludo hacia Arriba",
@@ -64,6 +73,7 @@ YOGA_POSES: List[Dict] = [
         "video":             "assets/videos/yoga/yoga2.mp4",
         "option_timestamps": [0.0, 13.0],
         "options": [
+            # Option A: lean left — right arm up, left hand rests on leg
             [
                 ("y_cmp", "rw_y", "<", "nose_y",  "Mano der sobre cabeza"),
                 ("angle", "right_elbow", ">", 150, "Codo der recto"),
@@ -71,6 +81,7 @@ YOGA_POSES: List[Dict] = [
                 ("angle", "left_knee",   ">", 160, "Rodilla izq recta"),
                 ("angle", "right_knee",  ">", 160, "Rodilla der recta"),
             ],
+            # Option B: lean right — left arm up, right hand rests on leg
             [
                 ("y_cmp", "lw_y", "<", "nose_y",  "Mano izq sobre cabeza"),
                 ("angle", "left_elbow",  ">", 150, "Codo izq recto"),
@@ -86,6 +97,7 @@ YOGA_POSES: List[Dict] = [
         "video":             "assets/videos/yoga/yoga3.mp4",
         "option_timestamps": [0.0, 13.0],
         "options": [
+            # Option A: lean right — right wrist near right knee, left arm up
             [
                 ("angle", "stance_ratio",   ">", 1.3,  "Piernas separadas"),
                 ("near",  "rw_y", "rk_y",   0.13,      "Muneca der a altura rodilla"),
@@ -93,6 +105,7 @@ YOGA_POSES: List[Dict] = [
                 ("y_cmp", "lw_y", "<", "nose_y",        "Mano izq sobre cabeza"),
                 ("angle", "left_elbow",     ">", 145,  "Brazo izq recto"),
             ],
+            # Option B: lean left — left wrist near left knee, right arm up
             [
                 ("angle", "stance_ratio",   ">", 1.3,  "Piernas separadas"),
                 ("near",  "lw_y", "lk_y",   0.13,      "Muneca izq a altura rodilla"),
@@ -108,10 +121,12 @@ YOGA_POSES: List[Dict] = [
         "video":             "assets/videos/yoga/yoga4.mp4",
         "option_timestamps": [0.0, 16.0],
         "options": [
+            # Option A: balance on left leg, right knee raised
             [
                 ("angle", "right_hip_angle", "<", 130, "Cadera der elevada"),
                 ("angle", "right_knee",      "<", 110, "Rodilla der doblada"),
             ],
+            # Option B: balance on right leg, left knee raised
             [
                 ("angle", "left_hip_angle", "<", 120, "Cadera izq elevada"),
                 ("angle", "left_knee",      "<", 110, "Rodilla izq doblada"),
@@ -121,6 +136,7 @@ YOGA_POSES: List[Dict] = [
 ]
 
 
+# ── Data extraction ──────────────────────────────────────────────────────────
 def _extract_pose_data(landmarks: list, fw: int, fh: int) -> dict:
     if not landmarks or len(landmarks) < 33:
         return {}
@@ -139,12 +155,14 @@ def _extract_pose_data(landmarks: list, fw: int, fh: int) -> dict:
         stance_ratio = ankle_span / max(hip_span, 0.01)
 
         return {
+            # Angles
             "left_elbow":      calc_angle(pt(LEFT_SHOULDER),  pt(LEFT_ELBOW),   pt(LEFT_WRIST)),
             "right_elbow":     calc_angle(pt(RIGHT_SHOULDER), pt(RIGHT_ELBOW),  pt(RIGHT_WRIST)),
             "left_knee":       calc_angle(pt(LEFT_HIP),       pt(LEFT_KNEE),    pt(LEFT_ANKLE)),
             "right_knee":      calc_angle(pt(RIGHT_HIP),      pt(RIGHT_KNEE),   pt(RIGHT_ANKLE)),
             "left_hip_angle":  calc_angle(pt(LEFT_SHOULDER),  pt(LEFT_HIP),     pt(LEFT_KNEE)),
             "right_hip_angle": calc_angle(pt(RIGHT_SHOULDER), pt(RIGHT_HIP),    pt(RIGHT_KNEE)),
+            # Y coords (normalized)
             "nose_y": landmarks[NOSE].y,
             "lw_y":   landmarks[LEFT_WRIST].y,
             "rw_y":   landmarks[RIGHT_WRIST].y,
@@ -152,18 +170,21 @@ def _extract_pose_data(landmarks: list, fw: int, fh: int) -> dict:
             "rh_y":   landmarks[RIGHT_HIP].y,
             "lk_y":   landmarks[LEFT_KNEE].y,
             "rk_y":   landmarks[RIGHT_KNEE].y,
+            # X coords (normalized) — for "near" conditions
             "lw_x":   landmarks[LEFT_WRIST].x,
             "rw_x":   landmarks[RIGHT_WRIST].x,
             "lk_x":   landmarks[LEFT_KNEE].x,
             "rk_x":   landmarks[RIGHT_KNEE].x,
+            # Computed
             "stance_ratio": stance_ratio,
         }
     except Exception:
         return {}
 
 
+# ── Game class ────────────────────────────────────────────────────────────────
 class PoseChallenge(BaseGame):
-    def __init__(self, frame_w: int = 1380, frame_h: int = 1080):
+    def __init__(self, frame_w: int = 640, frame_h: int = 480):
         self._w = frame_w
         self._h = frame_h
         self._video: Optional[VideoPlayer] = None
@@ -171,20 +192,20 @@ class PoseChallenge(BaseGame):
         self.reset()
 
     def reset(self) -> None:
-        self._next             = None
-        self._idx              = 0
-        self._active_option    = 0
-        self._score            = 0
+        self._next           = None
+        self._idx            = 0
+        self._active_option  = 0
+        self._score          = 0
         self._hold_accumulated = 0.0
         self._last_met_t: Optional[float] = None
         self._hold_ratio       = 0.0
         self._data:       dict = {}
         self._best_conds: list = []
-        self._n_met            = 0
-        self._all_met          = False
-        self._success          = False
-        self._success_t        = 0.0
-        self._success_pts      = 0
+        self._n_met          = 0
+        self._all_met        = False
+        self._success        = False
+        self._success_t      = 0.0
+        self._success_pts    = 0
         if self._video:
             self._video.stop()
         self._video = None
@@ -206,8 +227,8 @@ class PoseChallenge(BaseGame):
         self._last_met_t       = None
         self._hold_ratio       = 0.0
         self._best_conds       = []
-        self._n_met            = 0
-        self._all_met          = False
+        self._n_met         = 0
+        self._all_met       = False
 
     def update(self, frame: np.ndarray, landmarks: Optional[list],
                frame_w: int, frame_h: int) -> None:
@@ -217,11 +238,13 @@ class PoseChallenge(BaseGame):
             self._next = "menu"
             return
 
+        # Success linger before advancing to next pose
         if self._success:
             if now - self._success_t >= SUCCESS_LINGER:
                 self._success = False
                 pose = YOGA_POSES[self._idx]
                 if self._active_option < len(pose["options"]) - 1:
+                    # More options remain — stay on this pose, video will switch option
                     pass
                 else:
                     self._idx += 1
@@ -231,6 +254,7 @@ class PoseChallenge(BaseGame):
                         self._load_pose(self._idx)
             return
 
+        # Video-driven option switching
         vt = self._video.current_time if self._video else 0.0
         timestamps = YOGA_POSES[self._idx]["option_timestamps"]
         new_opt = sum(1 for t in timestamps if vt >= t) - 1
@@ -241,12 +265,14 @@ class PoseChallenge(BaseGame):
             self._last_met_t       = None
             self._hold_ratio       = 0.0
 
+        # Advance to next pose when video ends
         if self._video and self._video.is_done:
+            # Grant score for whatever hold was accumulated
             if self._hold_ratio > 0:
                 pts = int(self._hold_ratio * len(self._best_conds) * 10)
-                self._score      += pts
-                self._success     = True
-                self._success_t   = now
+                self._score     += pts
+                self._success    = True
+                self._success_t  = now
                 self._success_pts = pts
             else:
                 self._idx += 1
@@ -256,14 +282,17 @@ class PoseChallenge(BaseGame):
                     self._load_pose(self._idx)
             return
 
+        # Landmark extraction
         if landmarks:
             self._data = _extract_pose_data(landmarks, frame_w, frame_h)
         else:
             self._data = {}
 
+        # Evaluate the currently active option
         if self._data:
             pose    = YOGA_POSES[self._idx]
-            conds   = pose["options"][self._active_option]
+            options = pose["options"]
+            conds   = options[self._active_option]
             n_met   = sum(_check(self._data, c) for c in conds)
             self._best_conds = conds
             self._n_met      = n_met
@@ -271,6 +300,7 @@ class PoseChallenge(BaseGame):
         else:
             self._n_met, self._best_conds, self._all_met = 0, [], False
 
+        # Hold timer — acumula; la barra pausa al perder alineación, no reinicia
         if self._all_met:
             if self._last_met_t is not None:
                 self._hold_accumulated = min(
@@ -289,6 +319,7 @@ class PoseChallenge(BaseGame):
                 self._hold_ratio       = 0.0
         else:
             self._last_met_t = None
+            # _hold_accumulated y _hold_ratio se conservan (barra pausada)
 
     def render(self, frame: np.ndarray) -> None:
         if self._idx >= len(YOGA_POSES):
@@ -296,83 +327,65 @@ class PoseChallenge(BaseGame):
 
         if self._success:
             overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 0), (self._w, self._h), (40, 100, 40), -1)
-            cv2.addWeighted(overlay, 0.30, frame, 0.70, 0, frame)
-            (tw, _), _ = cv2.getTextSize("EXCELENTE!", cv2.FONT_HERSHEY_SIMPLEX, 2.2, 4)
+            cv2.rectangle(overlay, (0, 0), (self._w, self._h), (0, 180, 0), -1)
+            cv2.addWeighted(overlay, 0.35, frame, 0.65, 0, frame)
             draw_text(frame, "EXCELENTE!",
-                      (self._w // 2 - tw // 2, self._h // 2 - 20),
-                      scale=2.2, color=YOGA_CLR, thickness=4)
-            (pw, _), _ = cv2.getTextSize(f"+{self._success_pts} pts",
-                                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)
+                      (self._w // 2 - 115, self._h // 2 - 10),
+                      scale=1.6, color=(0, 255, 0), thickness=4)
             draw_text(frame, f"+{self._success_pts} pts",
-                      (self._w // 2 - pw // 2, self._h // 2 + 60),
-                      scale=1.2, color=YELLOW, thickness=2)
+                      (self._w // 2 - 60, self._h // 2 + 50),
+                      scale=1.0, color=YELLOW, thickness=2)
             return
 
         pose    = YOGA_POSES[self._idx]
-        panel_w = int(280 * self._w / 640)
+        panel_w = 220
+        draw_panel(frame, (0, 0, panel_w, self._h), color=(10, 10, 40), alpha=0.70)
 
-        draw_panel(frame, (0, 0, panel_w, self._h), color=BG, alpha=0.75)
-        cv2.line(frame, (panel_w, 0), (panel_w, self._h), LINE, 1, cv2.LINE_AA)
-
-        # Mode chip + pose name
-        draw_chip(frame, (12, 42), "YOGA", color=YOGA_CLR, scale=0.65)
-        draw_text(frame, pose["name"], (12, 78),  scale=0.7,  color=INK,     thickness=2)
+        draw_text(frame, "YOGA",        (8, 28),  scale=0.65, color=CYAN,   thickness=2)
+        draw_text(frame, pose["name"],  (8, 52),  scale=0.55, color=WHITE,  thickness=2)
 
         desc = pose["description"]
-        draw_text(frame, desc[:28], (12, 104), scale=0.48, color=INK_DIM, thickness=1)
+        draw_text(frame, desc[:28], (8, 74), scale=0.40, color=(200, 200, 200), thickness=1)
         if len(desc) > 28:
-            draw_text(frame, desc[28:], (12, 124), scale=0.48, color=INK_DIM, thickness=1)
+            draw_text(frame, desc[28:], (8, 89), scale=0.40, color=(200, 200, 200), thickness=1)
 
-        # Option indicator (A/B/C)
+        # Option indicator (A/B) when pose has multiple options
         if len(pose["options"]) > 1:
-            opt_lbl = chr(65 + self._active_option)
-            draw_chip(frame, (12, 152), f"OPCION {opt_lbl}", color=YOGA_CLR, scale=0.52)
+            opt_lbl = chr(65 + self._active_option)  # A, B, C...
+            draw_text(frame, f"Opcion {opt_lbl}", (8, 104),
+                      scale=0.42, color=ORANGE, thickness=1)
 
-        # Per-condition checklist
-        y_off   = 172 if len(pose["options"]) > 1 else 156
+        # Per-condition feedback
+        y_off   = 118 if len(pose["options"]) > 1 else 108
         n_total = len(self._best_conds)
         for cond in self._best_conds:
             met    = _check(self._data, cond) if self._data else False
             label  = cond[-1]
             symbol = "OK" if met else "--"
-            color  = YOGA_CLR if met else LINE
-            draw_text(frame, f"{symbol} {label}", (12, y_off),
-                      scale=0.45, color=color, thickness=1)
-            y_off += 22
+            color  = GREEN if met else RED
+            draw_text(frame, f"{symbol} {label}", (8, y_off),
+                      scale=0.38, color=color, thickness=1)
+            y_off += 18
 
-        # Condition count chip
-        count_color = YOGA_CLR if self._all_met else ORANGE if self._n_met >= n_total // 2 else RED
-        draw_text(frame, f"{self._n_met}/{n_total} condiciones",
-                  (12, self._h - 120),
-                  scale=0.65, color=count_color, thickness=2)
+        # Condition count
+        count_color = GREEN if self._all_met else ORANGE if self._n_met >= n_total // 2 else RED
+        draw_text(frame, f"{self._n_met}/{n_total} condiciones", (8, self._h - 90),
+                  scale=0.55, color=count_color, thickness=2)
 
-        # Hold ring — centered on the frame (right side), above HUD
-        if self._hold_ratio > 0:
-            ring_cx = self._w // 2
-            ring_cy = self._h // 2
-            ring_r  = int(90 * self._w / 640)
-            draw_hold_ring(frame, (ring_cx, ring_cy), ring_r, self._hold_ratio, YOGA_CLR)
-            hold_secs_done = self._hold_ratio * HOLD_SECS
-            (tw, _), _ = cv2.getTextSize(f"{hold_secs_done:.1f}s",
-                                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
-            draw_text(frame, f"{hold_secs_done:.1f}s",
-                      (ring_cx - tw // 2, ring_cy + 12),
-                      scale=1.0, color=YOGA_CLR, thickness=2)
-
-        # Hold bar (panel)
+        # Hold bar
         if self._hold_ratio > 0:
             hold_secs_done = self._hold_ratio * HOLD_SECS
             draw_text(frame, f"MANTEN! {hold_secs_done:.1f}/{HOLD_SECS:.0f}s",
-                      (12, self._h - 90), scale=0.52, color=YOGA_CLR, thickness=1)
-            draw_progress_bar(frame, (12, self._h - 68), (panel_w - 24, 16),
-                              self._hold_ratio, 1.0, fg_color=YOGA_CLR)
+                      (8, self._h - 68), scale=0.48, color=CYAN, thickness=1)
+            draw_progress_bar(frame, (8, self._h - 50), (panel_w - 16, 14),
+                              self._hold_ratio, 1.0, fg_color=CYAN)
 
         # Top-right: pose counter + score
-        counter_txt = f"POSE {self._idx + 1}/{len(YOGA_POSES)}"
-        (cw, _), _  = cv2.getTextSize(counter_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 1)
-        draw_chip(frame, (self._w - cw - 36, 50), counter_txt, color=YOGA_CLR, scale=0.65)
-        draw_chip(frame, (self._w - cw - 36, 96), f"PTS: {self._score}", color=YOGA_CLR, scale=0.65)
+        counter_txt = f"Pose {self._idx + 1}/{len(YOGA_POSES)}"
+        (cw, _), _ = cv2.getTextSize(counter_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        draw_panel(frame, (self._w - cw - 20, 0, cw + 20, 65), color=(10, 10, 40), alpha=0.65)
+        draw_text(frame, counter_txt,           (self._w - cw - 10, 28), scale=0.6,  color=WHITE)
+        draw_text(frame, f"Pts: {self._score}", (self._w - cw - 10, 55), scale=0.55, color=YELLOW)
 
     def get_video_frame(self) -> Optional[np.ndarray]:
         return self._video.read_frame() if self._video else None

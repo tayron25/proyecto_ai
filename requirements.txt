@@ -2,3 +2,5 @@ mediapipe
 opencv-python
 cvzone
 numpy
+fastapi
+uvicorn[standard]

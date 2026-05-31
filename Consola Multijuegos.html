@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<!-- saved from url=(0022)http://127.0.0.1:5173/ -->
+<html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="./Consola Multijuegos_files/client"></script>
+
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consola Multijuegos</title>
+  <style type="text/css" data-vite-dev-id="D:/proyectoIA/proyecto_ai/frontend/src/styles.css">* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #03050a;
+  color: #f4f7fb;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #1f6feb;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.appShell {
+  display: grid;
+  grid-template-columns: 270px 640px;
+  min-height: 100vh;
+  place-content: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.appShell.menuMode {
+  display: block;
+  padding: 0;
+}
+
+.appShell.menuMode .trainerPane,
+.appShell.menuMode .cameraCanvas,
+.appShell.menuMode .actions,
+.appShell.menuMode .moduleBadge,
+.appShell.menuMode .lastCommand {
+  display: none;
+}
+
+.appShell.menuMode .gamePane {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+}
+
+.appShell.menuMode .topBar {
+  display: none;
+}
+
+.trainerPane,
+.gamePane {
+  height: 480px;
+}
+
+.trainerPane {
+  background: #050819;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.trainerVideo,
+.trainerEmpty {
+  width: 270px;
+  height: 480px;
+  object-fit: cover;
+}
+
+.trainerEmpty {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  text-align: center;
+  color: #67e8f9;
+}
+
+.trainerEmpty strong {
+  color: #fff;
+}
+
+.gamePane {
+  position: relative;
+  width: 640px;
+  overflow: hidden;
+  background: #050819;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cameraSource {
+  display: none;
+}
+
+.cameraCanvas {
+  display: block;
+  width: 640px;
+  height: 480px;
+}
+
+.topBar,
+.actions,
+.moduleBadge,
+.cameraError,
+.lastCommand {
+  position: absolute;
+  z-index: 2;
+}
+
+.topBar {
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.topBar span,
+.moduleBadge,
+.cameraError,
+.lastCommand {
+  background: rgba(4, 8, 20, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 7px 9px;
+}
+
+.status {
+  color: #ffb454;
+}
+
+.status.ok {
+  color: #40f47c;
+}
+
+.actions {
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.actions button,
+.mainMenu button {
+  min-width: 82px;
+  min-height: 38px;
+  border-radius: 6px;
+}
+
+.moduleBadge {
+  right: 10px;
+  top: 10px;
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.moduleBadge span {
+  color: #67e8f9;
+  font-size: 13px;
+}
+
+.mainMenu {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 95% 55%, rgba(0, 229, 255, 0.08), transparent 24%),
+    radial-gradient(circle at 4% 6%, rgba(255, 45, 121, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(14, 3, 13, 0.96), #02060b 78%);
+  text-align: left;
+}
+
+.mainMenu h1 {
+  position: absolute;
+  top: clamp(70px, 8vh, 104px);
+  left: clamp(58px, 6.2vw, 118px);
+  width: min(900px, calc(100vw - 116px));
+  margin: 0;
+  color: #f3f3f6;
+  font-size: clamp(62px, 6.8vw, 116px);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+.mainMenu p {
+  position: absolute;
+  top: clamp(300px, 35vh, 380px);
+  left: clamp(58px, 6.2vw, 118px);
+  width: min(860px, calc(100vw - 116px));
+  margin: 0;
+  color: rgba(244, 247, 251, 0.68);
+  font-size: clamp(18px, 1.45vw, 25px);
+  font-weight: 700;
+  line-height: 1.32;
+}
+
+.menuKicker {
+  position: absolute;
+  top: clamp(54px, 7vh, 72px);
+  left: clamp(78px, 7.4vw, 140px);
+  color: rgba(244, 247, 251, 0.55);
+  font-family: "Courier New", monospace;
+  font-size: clamp(10px, 1vw, 13px);
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+.menuKicker::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(244, 247, 251, 0.65);
+}
+
+.mainMenu .menuDiscipline {
+  position: absolute;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: white;
+  text-align: left;
+}
+
+.menuPlane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.mainMenu .menuDiscipline:nth-of-type(1) {
+  color: #ff2d79;
+}
+
+.mainMenu .menuDiscipline:nth-of-type(2) {
+  color: #11d9f2;
+}
+
+.mainMenu .menuDiscipline:nth-of-type(3) {
+  color: #9cff13;
+}
+
+.menuWrist {
+  position: absolute;
+  z-index: 4;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(244, 247, 251, 0.82);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 16px rgba(244, 247, 251, 0.34);
+  pointer-events: none;
+}
+
+.mainMenu .menuDiscipline.hovered {
+  filter: brightness(1.12);
+}
+
+.mainMenu .menuDiscipline small,
+.mainMenu .menuDiscipline b,
+.mainMenu .menuDiscipline em,
+.mainMenu .menuDiscipline strong {
+  display: block;
+  font-family: "Courier New", monospace;
+  font-style: normal;
+}
+
+.mainMenu .menuDiscipline small {
+  position: absolute;
+  top: clamp(-56px, -5.3vh, -38px);
+  left: 0;
+  width: 100%;
+  color: rgba(244, 247, 251, 0.44);
+  font-size: clamp(11px, 0.86vw, 15px);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.mainMenu .menuDiscipline b {
+  position: absolute;
+  top: clamp(-36px, -3.4vh, -22px);
+  left: 0;
+  width: 100%;
+  color: currentColor;
+  font-size: clamp(12px, 0.86vw, 15px);
+  letter-spacing: 2px;
+}
+
+.mainMenu .menuDiscipline b::after {
+  content: none;
+}
+
+.mainMenu .menuDiscipline span {
+  position: relative;
+  z-index: 2;
+  display: block;
+  margin-top: clamp(18px, 2.6vh, 34px);
+  font-size: clamp(58px, 5.2vw, 108px);
+  line-height: 0.95;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.mainMenu .menuDiscipline em {
+  margin-top: clamp(10px, 1.2vh, 18px);
+  color: rgba(244, 247, 251, 0.58);
+  font-size: clamp(12px, 0.9vw, 16px);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.mainMenu .menuDiscipline strong {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(6px, 1vh, 14px);
+  width: 100%;
+  padding-top: clamp(14px, 1.8vh, 24px);
+  border-top: 1px solid rgba(244, 247, 251, 0.08);
+  color: rgba(244, 247, 251, 0.33);
+  font-size: clamp(9px, 0.78vw, 13px);
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.mainMenu .menuDiscipline u {
+  position: absolute;
+  right: 0;
+  bottom: clamp(-8px, -0.8vh, -4px);
+  display: grid;
+  width: clamp(34px, 3.2vw, 52px);
+  height: clamp(34px, 3.2vw, 52px);
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: clamp(16px, 1.5vw, 24px);
+  text-decoration: none;
+}
+
+.mainMenu .menuDiscipline i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -12px;
+  height: 3px;
+  transform-origin: left center;
+  background: currentColor;
+  box-shadow: 0 0 14px currentColor;
+}
+
+.clapProgress {
+  position: absolute;
+  left: clamp(44px, 6.4vw, 88px);
+  bottom: 34px;
+  width: 240px;
+  height: 14px;
+  border: 1px solid rgba(244, 247, 251, 0.34);
+}
+
+.clapProgress span {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: #f4f7fb;
+}
+
+.clapProgress strong {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 20px;
+  color: rgba(244, 247, 251, 0.76);
+  font-size: 14px;
+}
+
+.cameraError {
+  left: 10px;
+  bottom: 10px;
+  color: #ff6b6b;
+}
+
+.lastCommand {
+  left: 10px;
+  bottom: 10px;
+  opacity: 0.01;
+}
+
+@media (max-width: 980px) {
+  .appShell {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+</style></head>
+  <body>
+    <div id="root"><main class="appShell menuMode"><section class="trainerPane"><div class="trainerEmpty"><span>CONSOLA</span><strong>MULTIJUEGOS</strong></div></section><section class="gamePane"><video class="cameraSource" playsinline=""></video><canvas class="cameraCanvas" width="640" height="480"></canvas><div class="mainMenu"><div class="menuKicker">MEDIAPIPE + POSE TRACKING ACTIVE</div><h1>Tu cuerpo es<br>el mando.</h1><p>Tres disciplinas, una camara. Elige tu entrenamiento y deja que la IA puntue cada movimiento en tiempo real.</p><div class="menuPlane"><button type="button" class="menuDiscipline " style="left: 4.375%; top: 60.9167%; width: 28.125%; height: 27.0833%;"><span>BOX</span><em>5 combos · 10s c/u</em><strong>VELOCIDAD · POTENCIA · PRECISION</strong></button><button type="button" class="menuDiscipline " style="left: 35.9375%; top: 60.9167%; width: 28.125%; height: 27.0833%;"><span>YOGA</span><em>5 posturas · 10s hold</em><strong>EQUILIBRIO · FLEXIBILIDAD · RESPIRACION</strong></button><button type="button" class="menuDiscipline " style="left: 67.5%; top: 60.9167%; width: 28.125%; height: 27.0833%;"><span>AEROBICO</span><em>1 rutina · 60s</em><strong>RITMO · RESISTENCIA · ENERGIA</strong></button></div></div><div class="topBar"><span class="status ok">Pose activa</span><span>FPS 11.7</span><span>Score 0</span></div><div class="actions"><button type="button">Menu</button><button type="button">Reset</button></div><div class="cameraError">No se pudo abrir la camara del navegador.</div></section></main></div>
+    <script type="module" src="./Consola Multijuegos_files/main.tsx"></script>
+  
+
+</body></html>

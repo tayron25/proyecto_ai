@@ -8,7 +8,7 @@ import numpy as np
 class VideoPlayer:
     """Preloads all video frames into RAM on load(); read_frame() is a pure list index."""
 
-    def __init__(self, path: str, panel_w: int = 480, panel_h: int = 480) -> None:
+    def __init__(self, path: str, panel_w: int = 270, panel_h: int = 480) -> None:
         self._path    = path
         self._pw      = panel_w
         self._ph      = panel_h
