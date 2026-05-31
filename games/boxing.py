@@ -160,7 +160,7 @@ BOXING_MODULES = [
             
             (7.6,  ["JAB", "CROSS", "DODGE"], 2.0),
             (9.6,  ["UPPER_L"]),
-            (11.7, ["UPPER_R", "DODGE"],2.3),
+            (10.7, ["UPPER_R", "DODGE"],2.3),
         ],
     },
 ]

@@ -179,6 +179,10 @@ button:disabled {
   background: #000;
 }
 
+.appShell.boxingMode .trainerVideo {
+  transform: scaleX(-1);
+}
+
 .appShell.boxingMode .topBar,
 .appShell.yogaMode .topBar,
 .appShell.aerobicsMode .topBar {

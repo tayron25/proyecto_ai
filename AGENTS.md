@@ -286,5 +286,6 @@ Si aparece una gran cantidad de cambios dentro de `venv/` o `node_modules/`, no 
 - Se ajusto Yoga en `games/pose_challenge.py`: el modulo 2 `Inclinacion Lateral` ya no exige rodillas rectas en ninguna de sus dos opciones; web hereda el cambio mediante `backend/web_pose_challenge.py`.
 - Se ajustaron las posiciones de los targets de gancho en `games/boxing.py`: `GANCHO_L` y `GANCHO_R` ahora aparecen un poco mas hacia el centro y mas arriba; web hereda el cambio desde `PUNCH_POS`.
 - Se agrego salida por gesto en resumen web: al terminar Box, Yoga o Aerobico se puede volver al menu con aplauso sostenido de 3.5 segundos; `backend/session.py` detecta el gesto y `frontend/src/App.tsx` muestra la barra de progreso.
+- Se puso el video guia de Box en modo espejo solo en frontend mediante CSS (`.appShell.boxingMode .trainerVideo { transform: scaleX(-1); }`), sin modificar los archivos MP4 ni afectar Yoga/Aerobico.
 - Se mantiene el modo escritorio con `python main.py`.
 - Se agrego esta guia y la regla de mantenerla actualizada con cada cambio.
