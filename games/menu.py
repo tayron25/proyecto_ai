@@ -10,7 +10,7 @@ from utils.math_utils import landmark_to_px
 
 # Clap detection thresholds (normalized coords)
 CLAP_DIST       = 0.18   # wrists must be closer than this (normalized) to count as clap
-CLAP_HOLD_SECS  = 2.0    # must hold the clap gesture this long to confirm
+CLAP_HOLD_SECS  = 0.4    # must hold the clap gesture this long to confirm
 
 
 class _Button:

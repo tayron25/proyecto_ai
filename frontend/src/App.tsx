@@ -70,7 +70,7 @@ export default function App() {
   );
   const isBoxingSummary = Boolean(hasBoxingSummary && !boxingResult && !pendingBoxingResult);
   const isYogaSummary = Boolean(hasYogaSummary && !yogaPoseResult && !pendingYogaPoseResult);
-  const isMenu = !gameState || gameState.state === "menu";
+  const isMenu = gameState?.state === "menu";
   const isSummary = isBoxingSummary || isYogaSummary || isAerobicsSummary;
   const summaryClapRatio = Math.max(0, Math.min(gameState?.summaryClap?.ratio ?? 0, 1));
   const isPreparing = Boolean(prep?.active && isPlaying);
@@ -445,7 +445,7 @@ export default function App() {
         <video ref={videoRef} className="cameraSource" playsInline muted />
         <CameraCanvas source={videoRef} gameState={gameState} />
 
-        {isMenu && (
+        {gameState?.state === "menu" && (
           <>
             <MainMenu menu={gameState?.menu ?? null} onSelectAction={(action) => selectGame(action)} />
             <div className="menuPosePreview">
@@ -663,12 +663,7 @@ export default function App() {
           />
         )}
 
-        {error && (
-          <div className="cameraError">
-            <strong>{error}</strong>
-            <span>Revisa permisos del navegador, cierra apps que usen la webcam y recarga la pagina.</span>
-          </div>
-        )}
+        {error && <div className="cameraError">{error}</div>}
         {lastCommand && <span className="lastCommand">{lastCommand}</span>}
       </section>
     </main>
