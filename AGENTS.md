@@ -290,3 +290,6 @@ Si aparece una gran cantidad de cambios dentro de `venv/` o `node_modules/`, no 
 - Se simplificaron los mensajes finales de Yoga a `EXCELENTE`, `MUY BIEN`, `BIEN` y `PUEDES HACERLO MEJOR`; tambien se quitaron los botones de resumen final en Box/Yoga/Aerobico para dejar solo el regreso al menu por aplauso, enmarcado con el color de cada nivel.
 - Se mantiene el modo escritorio con `python main.py`.
 - Se agrego esta guia y la regla de mantenerla actualizada con cada cambio.
+- Se agrego `README.md` con instrucciones de instalacion, ejecucion y verificacion para los modos web y escritorio.
+- Se renombro `assets/audio/menu/menu.MP3` a `assets/audio/menu/menu.mp3` para coincidir exactamente con la ruta usada por el frontend.
+- Se corrigio el arranque web sin camara: el WebSocket solicita estado inicial al conectar y el frontend muestra el menu con botones fallback aunque `getUserMedia` falle, junto con mensajes de error de camara mas especificos.

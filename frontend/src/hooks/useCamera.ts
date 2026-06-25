@@ -19,7 +19,20 @@ export function useCamera() {
           await videoRef.current.play();
           setStreamReady(true);
         }
-      } catch {
+      } catch (err) {
+        const name = err instanceof DOMException ? err.name : "";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setError("Permiso de camara bloqueado.");
+          return;
+        }
+        if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setError("No se encontro una camara conectada.");
+          return;
+        }
+        if (name === "NotReadableError" || name === "TrackStartError") {
+          setError("La camara esta ocupada por otra aplicacion.");
+          return;
+        }
         setError("No se pudo abrir la camara del navegador.");
       }
     }

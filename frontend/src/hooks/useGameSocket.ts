@@ -26,7 +26,10 @@ export function useGameSocket() {
       const ws = new WebSocket(WS_URL);
       wsRef.current = ws;
 
-      ws.onopen = () => setConnected(true);
+      ws.onopen = () => {
+        setConnected(true);
+        ws.send(JSON.stringify({}));
+      };
       ws.onclose = () => {
         setConnected(false);
         if (!closed) {
