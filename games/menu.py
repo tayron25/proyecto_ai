@@ -9,8 +9,8 @@ from utils.landmarks import LEFT_WRIST, RIGHT_WRIST
 from utils.math_utils import landmark_to_px
 
 # Clap detection thresholds (normalized coords)
-CLAP_DIST       = 0.18   # wrists must be closer than this (normalized) to count as clap
-CLAP_HOLD_SECS  = 0.4    # must hold the clap gesture this long to confirm
+CLAP_DIST       = 0.18   # wrists must be closer than this (normalized 2D distance) to count as clap
+CLAP_HOLD_SECS  = 2.0    # must hold the clap gesture this long to confirm
 
 
 class _Button:
@@ -60,8 +60,9 @@ class MainMenu(BaseGame):
             return False
         lw = landmarks[LEFT_WRIST]
         rw = landmarks[RIGHT_WRIST]
-        dist = abs(lw.x - rw.x)
-        return dist < CLAP_DIST
+        dx = lw.x - rw.x
+        dy = lw.y - rw.y
+        return (dx * dx + dy * dy) < (CLAP_DIST * CLAP_DIST)
 
     # ------------------------------------------------------------------
     def update(self, frame: np.ndarray, landmarks: Optional[list],
@@ -77,10 +78,15 @@ class MainMenu(BaseGame):
             wrist_pts    = [lw, rw]
 
         # Update hover state for all buttons
+        previous_hovered_idx = self._hovered_idx
         self._hovered_idx = -1
         for i, btn in enumerate(self._buttons):
             if btn.update(wrist_pts):
                 self._hovered_idx = i
+
+        if self._hovered_idx != previous_hovered_idx:
+            self._clap_t = None
+            self._clap_ratio = 0.0
 
         # Clap detection
         if self._clapping(landmarks) and self._hovered_idx >= 0:

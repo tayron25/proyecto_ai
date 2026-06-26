@@ -119,7 +119,7 @@ export type GameState = {
   } | null;
 };
 
-export type ClientCommand = "menu" | "reset" | "videoEnded";
+export type ClientCommand = "menu" | "reset" | "videoEnded" | "finish";
 
 export type BoxingModuleResult = {
   id: string;

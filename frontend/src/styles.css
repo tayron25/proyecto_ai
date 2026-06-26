@@ -273,6 +273,16 @@ button:disabled {
   z-index: 5;
 }
 
+.appShell.boxingMode .actions.overlayActions,
+.appShell.yogaMode .actions.overlayActions,
+.appShell.aerobicsMode .actions.overlayActions {
+  position: fixed;
+  top: 16px;
+  right: 22px;
+  bottom: auto;
+  z-index: 60;
+}
+
 .appShell.boxingMode .actions button,
 .appShell.yogaMode .actions button,
 .appShell.aerobicsMode .actions button {
@@ -294,6 +304,32 @@ button:disabled {
 .appShell.aerobicsMode .actions button {
   border-color: rgba(246, 255, 0, 0.36);
   color: #f6ff00;
+}
+
+.aerobicsFinishActions {
+  position: absolute;
+  left: 22px;
+  bottom: 16px;
+  z-index: 5;
+}
+
+.aerobicsFinishActions.overlayActions {
+  position: fixed;
+  top: 16px;
+  left: 22px;
+  bottom: auto;
+  z-index: 60;
+}
+
+.aerobicsFinishActions button {
+  min-width: 98px;
+  min-height: 34px;
+  border-radius: 6px;
+  border: 1px solid rgba(246, 255, 0, 0.36);
+  background: rgba(5, 9, 12, 0.82);
+  color: #f6ff00;
+  font-weight: 800;
+  box-shadow: 0 0 18px rgba(246, 255, 0, 0.1);
 }
 
 .trainerPane {
@@ -764,8 +800,8 @@ button:disabled {
   right: 0;
   bottom: 0;
   z-index: 4;
-  height: 92px;
-  padding: 14px 24px 12px;
+  height: 104px;
+  padding: 12px 24px 14px;
   background:
     linear-gradient(90deg, rgba(156, 255, 19, 0.16), transparent 24%),
     linear-gradient(180deg, #05080d, #03070a);
@@ -900,6 +936,36 @@ button:disabled {
 .aerobicsHudMatch {
   position: absolute;
   z-index: 2;
+}
+
+.aerobicsCoachFeedback {
+  position: fixed;
+  left: 75%;
+  top: 46%;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  color: #f6ff00;
+  font-family: "Courier New", monospace;
+  font-size: clamp(15px, 1.35vw, 23px);
+  font-weight: 900;
+  letter-spacing: 1.7px;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 8px rgba(0, 0, 0, 0.86),
+    0 0 16px currentColor;
+  pointer-events: none;
+}
+
+.aerobicsCoachFeedback.warning {
+  color: #f6ff00;
+  animation: aerobicsCoachBreathe 1.25s ease-in-out infinite;
+}
+
+.aerobicsCoachFeedback.success {
+  color: #40f47c;
+  animation: aerobicsCoachPulse 0.78s ease-out both;
 }
 
 .aerobicsHudTitle {
@@ -1047,6 +1113,36 @@ button:disabled {
   height: 4px;
   border: 1px solid rgba(246, 255, 0, 0.16);
   border-radius: 999px;
+}
+
+@keyframes aerobicsCoachBreathe {
+  0%, 100% {
+    opacity: 0.78;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.025);
+  }
+}
+
+@keyframes aerobicsCoachPulse {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.82);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.14);
+  }
 }
 
 .aerobicsSummaryOverlay {
@@ -1217,7 +1313,8 @@ button:disabled {
     0 0 24px rgba(255, 45, 121, 0.34);
 }
 
-.yogaResultOverlay p {
+.yogaResultOverlay p,
+.yogaSummaryOverlay p {
   margin: 0;
   color: rgba(244, 247, 251, 0.78);
   font-size: clamp(18px, 1.6vw, 28px);
@@ -1251,6 +1348,36 @@ button:disabled {
   font-size: clamp(12px, 1vw, 15px);
   font-weight: 700;
   letter-spacing: 1.5px;
+}
+
+.resultFinishButton {
+  min-height: 46px;
+  margin-top: 8px;
+  padding: 0 22px;
+  border-radius: 8px;
+  background: rgba(5, 8, 12, 0.68);
+  font-family: "Courier New", monospace;
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.boxingFinishButton {
+  border: 1px solid rgba(156, 255, 19, 0.46);
+  color: #9cff13;
+  box-shadow: 0 0 18px rgba(156, 255, 19, 0.12);
+}
+
+.yogaFinishButton {
+  border: 1px solid rgba(255, 45, 121, 0.46);
+  color: #ff2d79;
+  box-shadow: 0 0 18px rgba(255, 45, 121, 0.12);
+}
+
+.resultFinishButton:hover {
+  border-color: currentColor;
+  filter: brightness(1.12);
 }
 
 .yogaSummaryOverlay {
@@ -1342,7 +1469,7 @@ button:disabled {
 
 .boxingHudCenter {
   left: 50%;
-  top: 13px;
+  top: 10px;
   transform: translateX(-50%);
   text-align: center;
 }
@@ -1351,15 +1478,15 @@ button:disabled {
   display: block;
   color: #9cff13;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(40px, 4.2vw, 64px);
-  line-height: 0.82;
+  font-size: clamp(36px, 3.8vw, 58px);
+  line-height: 0.78;
   text-shadow: 0 0 18px rgba(156, 255, 19, 0.7);
 }
 
 .boxingHudCenter span,
 .boxingHudRight span {
   display: block;
-  margin-top: 4px;
+  margin-top: 8px;
   color: rgba(156, 255, 19, 0.74);
   font-size: 11px;
   font-weight: 700;
@@ -1368,7 +1495,7 @@ button:disabled {
 
 .boxingHudRight {
   right: 24px;
-  top: 15px;
+  top: 16px;
   text-align: right;
 }
 
@@ -1423,6 +1550,7 @@ button:disabled {
   text-shadow: 0 0 26px rgba(156, 255, 19, 0.22);
 }
 
+.boxingResultOverlay h2,
 .boxingSummaryOverlay h2 {
   color: #d9ffb8;
   max-width: min(980px, 92vw);
@@ -1445,7 +1573,8 @@ button:disabled {
   text-shadow: 0 0 28px rgba(156, 255, 19, 0.58);
 }
 
-.boxingResultOverlay p {
+.boxingResultOverlay p,
+.boxingSummaryOverlay p {
   margin: 0;
   color: rgba(244, 247, 251, 0.78);
   font-size: clamp(18px, 1.6vw, 28px);
@@ -1612,12 +1741,294 @@ button:disabled {
   color: #f6ff00;
 }
 
+.boxingResultOverlay,
+.yogaResultOverlay,
+.boxingSummaryOverlay,
+.yogaSummaryOverlay,
+.aerobicsSummaryOverlay {
+  gap: 10px;
+  padding: clamp(20px, 3vh, 32px) clamp(56px, 7vw, 96px) 20px;
+}
+
+.boxingSummaryOverlay,
+.yogaSummaryOverlay,
+.aerobicsSummaryOverlay {
+  align-content: start;
+}
+
+.boxingResultOverlay > span,
+.yogaResultOverlay > span,
+.boxingSummaryOverlay > span,
+.yogaSummaryOverlay > span,
+.aerobicsSummaryOverlay > span {
+  font-size: clamp(16px, 1.25vw, 22px);
+  letter-spacing: 4.5px;
+}
+
+.boxingResultOverlay h2,
+.yogaResultOverlay h2,
+.aerobicsSummaryOverlay h2,
+.boxingSummaryOverlay h2,
+.yogaSummaryOverlay h2 {
+  max-width: min(980px, 82vw);
+  margin: 2px 0 0;
+  font-size: clamp(38px, 5.1vw, 74px);
+  line-height: 0.96;
+}
+
+.boxingResultOverlay strong,
+.yogaResultOverlay strong,
+.aerobicsSummaryOverlay > strong,
+.boxingSummaryOverlay > strong,
+.yogaSummaryOverlay > strong {
+  font-size: clamp(74px, 9vw, 128px);
+  line-height: 0.86;
+}
+
+.boxingResultOverlay p,
+.yogaResultOverlay p,
+.aerobicsSummaryOverlay p,
+.boxingSummaryOverlay p,
+.yogaSummaryOverlay p {
+  max-width: min(820px, 76vw);
+  font-size: clamp(17px, 1.35vw, 23px);
+  line-height: 1.16;
+}
+
+.summaryDetail,
+.yogaModulePoints {
+  color: rgba(244, 247, 251, 0.72);
+  font-family: "Courier New", monospace;
+  font-size: clamp(14px, 1.15vw, 18px);
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.scoreDetail {
+  font-size: clamp(22px, 2vw, 34px);
+}
+
+.aerobicsSummaryOverlay .aerobicsCalorieTitle {
+  font-size: clamp(32px, 4.1vw, 60px);
+}
+
+.aerobicsSummaryOverlay > .aerobicsCalories {
+  font-size: clamp(58px, 7.4vw, 104px);
+}
+
+.boxingSummaryGrid,
+.yogaSummaryGrid,
+.aerobicsSummaryGrid {
+  width: min(1080px, 84vw);
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.boxingSummaryGrid article,
+.yogaSummaryGrid article,
+.aerobicsSummaryGrid article {
+  min-height: 34px;
+  gap: 12px;
+}
+
+.boxingSummaryGrid small,
+.boxingSummaryGrid em,
+.yogaSummaryGrid small,
+.yogaSummaryGrid em,
+.aerobicsSummaryGrid small,
+.aerobicsSummaryGrid em {
+  font-size: 11px;
+  line-height: 1.14;
+  letter-spacing: 1.2px;
+}
+
+.boxingSummaryGrid b,
+.yogaSummaryGrid b,
+.aerobicsSummaryGrid b {
+  font-size: 22px;
+  line-height: 0.95;
+}
+
+.boxingSummaryGrid i,
+.yogaSummaryGrid i,
+.aerobicsSummaryGrid i {
+  height: 12px;
+}
+
+.summaryClapPrompt {
+  width: min(480px, 72vw);
+  gap: 9px;
+  margin-top: 10px;
+  padding: 12px 18px 14px;
+}
+
+.summaryClapPrompt span {
+  font-size: clamp(13px, 1.1vw, 17px);
+  letter-spacing: 1.5px;
+}
+
+.summaryClapPrompt i {
+  height: 10px;
+}
+
+.reportExportButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  margin-top: 0;
+  padding: 0 18px;
+  border-color: color-mix(in srgb, currentColor 36%, transparent);
+  background: rgba(3, 6, 10, 0.76);
+  color: currentColor;
+  font-family: "Courier New", monospace;
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 900;
+  letter-spacing: 1px;
+  box-shadow:
+    0 0 18px color-mix(in srgb, currentColor 16%, transparent),
+    inset 0 0 18px rgba(255, 255, 255, 0.03);
+}
+
+.reportDocIcon {
+  position: relative;
+  width: 16px;
+  height: 20px;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.92;
+}
+
+.reportDocIcon::before {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 7px;
+  height: 7px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  background: rgba(3, 6, 10, 0.95);
+}
+
+.reportDocIcon::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 8px;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 5px 0 currentColor;
+  opacity: 0.76;
+}
+
+.reportModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 5, 8, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.reportModal {
+  width: min(520px, 92vw);
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  padding: 28px 30px 30px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(7, 12, 18, 0.98), rgba(3, 5, 10, 0.94)),
+    radial-gradient(circle at 50% 0%, currentColor, transparent 72%);
+  color: #67e8f9;
+  text-align: center;
+  box-shadow:
+    0 0 38px rgba(103, 232, 249, 0.18),
+    inset 0 0 24px rgba(255, 255, 255, 0.04);
+}
+
+.reportModal span {
+  color: currentColor;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+.reportModal h2 {
+  margin: 0;
+  color: #f4f7fb;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1;
+}
+
+.reportModal p {
+  margin: 0;
+  color: rgba(244, 247, 251, 0.72);
+  font-size: clamp(16px, 1.5vw, 20px);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.reportModal dl {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 2px;
+}
+
+.reportModal dl div {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(103, 232, 249, 0.14);
+  background: rgba(103, 232, 249, 0.045);
+  text-align: left;
+}
+
+.reportModal dt,
+.reportModal dd {
+  margin: 0;
+  font-size: clamp(13px, 1.15vw, 16px);
+  line-height: 1.2;
+}
+
+.reportModal dt {
+  color: rgba(244, 247, 251, 0.56);
+  font-family: "Courier New", monospace;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.reportModal dd {
+  color: #f4f7fb;
+  font-weight: 800;
+}
+
+.reportModal button {
+  min-width: 130px;
+  min-height: 40px;
+  border-color: rgba(103, 232, 249, 0.38);
+  background: rgba(7, 14, 20, 0.9);
+  color: #67e8f9;
+  box-shadow: 0 0 18px rgba(103, 232, 249, 0.12);
+}
+
 .boxingHud > i {
   position: absolute;
   left: 24px;
   right: 24px;
-  bottom: 12px;
-  height: 10px;
+  bottom: 18px;
+  height: 8px;
   border-radius: 999px;
   transform-origin: left center;
   background: linear-gradient(90deg, rgba(156, 255, 19, 0.38), #9cff13);
@@ -1629,8 +2040,8 @@ button:disabled {
   position: absolute;
   left: 24px;
   right: 24px;
-  bottom: 12px;
-  height: 10px;
+  bottom: 18px;
+  height: 8px;
   border-radius: 999px;
   border: 1px solid rgba(244, 247, 251, 0.12);
   pointer-events: none;
@@ -1843,6 +2254,43 @@ button:disabled {
   align-self: end;
   justify-self: center;
   color: rgba(244, 247, 251, 0.36);
+}
+
+.transitionFinishButton {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 1px solid rgba(244, 247, 251, 0.28);
+  border-radius: 8px;
+  background: rgba(5, 8, 12, 0.72);
+  color: rgba(244, 247, 251, 0.9);
+  font-family: "Courier New", monospace;
+  font-size: clamp(13px, 1.05vw, 16px);
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  box-shadow: 0 0 24px rgba(244, 247, 251, 0.08);
+}
+
+.transitionFinishButton:hover {
+  color: #ffffff;
+  border-color: currentColor;
+}
+
+.exerciseTransition.boxingStart .transitionFinishButton {
+  color: #9cff13;
+  border-color: rgba(156, 255, 19, 0.42);
+}
+
+.exerciseTransition.yogaStart .transitionFinishButton {
+  color: #ff2d79;
+  border-color: rgba(255, 45, 121, 0.42);
+}
+
+.exerciseTransition.aerobicsStart .transitionFinishButton {
+  color: #f6ff00;
+  border-color: rgba(246, 255, 0, 0.42);
 }
 
 .transitionSkeleton {

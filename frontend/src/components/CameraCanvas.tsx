@@ -77,14 +77,20 @@ export function CameraCanvas({ source, gameState }: Props) {
         gameState?.messages.forEach((message) => {
           ctx.save();
           ctx.globalAlpha = message.alpha ?? 1;
-          ctx.font = message.kind === "dodge" ? "700 36px Arial" : "700 24px Arial";
+          const messageFont = message.kind === "dodge" ? 28 : message.text.length > 18 ? 17 : 22;
+          ctx.font = `700 ${messageFont}px Arial`;
           ctx.textAlign = "center";
-          ctx.lineWidth = 5;
+          ctx.lineWidth = 4;
           ctx.strokeStyle = "rgba(0,0,0,.75)";
           ctx.fillStyle = message.kind === "good" ? "#40f47c" : message.kind === "dodge" ? "#ff4c62" : "#ff4c62";
           const point = mapSourcePoint(message.x, message.y, viewport);
-          ctx.strokeText(message.text, point.x, point.y);
-          ctx.fillText(message.text, point.x, point.y);
+          const lines = splitCanvasMessage(message.text);
+          const startY = point.y - ((lines.length - 1) * messageFont * 0.58);
+          lines.forEach((line, index) => {
+            const y = startY + index * messageFont * 1.15;
+            ctx.strokeText(line, point.x, y);
+            ctx.fillText(line, point.x, y);
+          });
           ctx.restore();
         });
       }
@@ -98,6 +104,24 @@ export function CameraCanvas({ source, gameState }: Props) {
   }, [gameState, source]);
 
   return <canvas ref={canvasRef} className="cameraCanvas" width={SOURCE_W} height={SOURCE_H} />;
+}
+
+function splitCanvasMessage(text: string) {
+  if (text.length <= 18) {
+    return [text];
+  }
+  if (text === "CHECKPOINT VALIDADO") {
+    return ["CHECKPOINT", "VALIDADO"];
+  }
+  if (text === "ANGULO INSUFICIENTE") {
+    return ["ANGULO", "INSUFICIENTE"];
+  }
+  if (text === "FUERA DE RANGO") {
+    return ["FUERA DE", "RANGO"];
+  }
+  const words = text.split(" ");
+  const midpoint = Math.ceil(words.length / 2);
+  return [words.slice(0, midpoint).join(" "), words.slice(midpoint).join(" ")];
 }
 
 function drawActivityPanel(ctx: CanvasRenderingContext2D, gameState: GameState | null, canvasW: number, canvasH: number) {
@@ -153,14 +177,14 @@ function drawYogaActivity(ctx: CanvasRenderingContext2D, activity: NonNullable<G
   (activity.conditions || []).forEach((condition) => {
     ctx.fillStyle = condition.met ? "#40f47c" : "#ff4c62";
     ctx.font = "13px Arial";
-    ctx.fillText(`${condition.met ? "OK" : "--"} ${condition.label}`, 26, y);
+    ctx.fillText(`${condition.met ? "Checkpoint validado" : "Angulo insuficiente"} ${condition.label}`, 26, y);
     y += 18;
   });
 
   drawProgress(ctx, 26, 420, 196, 14, activity.progress, "#ff2d79");
   ctx.fillStyle = "#ff2d79";
   ctx.font = "700 13px Arial";
-  ctx.fillText(`MANTEN ${(activity.progress * 10).toFixed(1)}/10s`, 26, 408);
+  ctx.fillText(`Postura optimizada ${(activity.progress * 10).toFixed(1)}/10s`, 26, 408);
 }
 
 function drawAerobicsActivity(ctx: CanvasRenderingContext2D, activity: NonNullable<GameState["activity"]>) {
@@ -175,7 +199,7 @@ function drawAerobicsActivity(ctx: CanvasRenderingContext2D, activity: NonNullab
   if (activity.formOk !== null && activity.formOk !== undefined) {
     ctx.fillStyle = activity.formOk ? "#40f47c" : "#ff4c62";
     ctx.font = "700 14px Arial";
-    ctx.fillText(activity.formOk ? "FORMA OK" : "AJUSTA CODOS", 26, y + 10);
+    ctx.fillText(activity.formOk ? "Postura optimizada" : "Angulo insuficiente", 26, y + 10);
   }
 
   const reps = activity.reps || 0;
@@ -538,9 +562,11 @@ function drawBoxingDodge(
     ctx.lineWidth = 6;
     ctx.strokeStyle = "rgba(0,0,0,.78)";
     ctx.fillStyle = dodge.result ? "#40f47c" : "#ff4c62";
-    const text = dodge.result ? "BIEN ESQUIVADO!" : "GOLPEADO!";
-    ctx.strokeText(text, point.x, point.y);
-    ctx.fillText(text, point.x, point.y);
+    splitCanvasMessage(dodge.result ? "CHECKPOINT VALIDADO" : "FUERA DE RANGO").forEach((line, index) => {
+      const y = point.y - 18 + index * 34;
+      ctx.strokeText(line, point.x, y);
+      ctx.fillText(line, point.x, y);
+    });
     ctx.restore();
   }
 }

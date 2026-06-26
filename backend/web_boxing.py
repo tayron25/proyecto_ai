@@ -187,6 +187,25 @@ class WebBoxingGame:
         self._dodge_active = False
         self._dodge_result = None
 
+    def finish_now(self) -> None:
+        if self._next == "summary":
+            return
+        if 0 <= self._mod_idx < len(BOXING_MODULES):
+            has_activity = (
+                self._module_correct > 0
+                or self._module_failed > 0
+                or self._sched_idx > 0
+                or not self._module_results
+            )
+            if has_activity and not any(result["index"] == self._mod_idx for result in self._module_results):
+                self._last_result = self._finish_module_result()
+        self._targets = []
+        self._popups = []
+        self._ripples = []
+        self._dodge_active = False
+        self._dodge_result = None
+        self._next = "summary"
+
     def update(self, landmarks: Optional[list], video_time: float) -> None:
         now = time.perf_counter()
         if self._next:
@@ -219,7 +238,7 @@ class WebBoxingGame:
             if not target.hit and not target.expired and now - target.spawn_time > target.life_secs:
                 target.expired = True
                 self._register_failure()
-                self._popups.append(Popup("MISS", target.center[0], target.center[1], "bad"))
+                self._popups.append(Popup("FUERA DE RANGO", target.center[0], target.center[1], "bad"))
                 self._ripples.append(Ripple(target.center[0], target.center[1], now, False))
 
         self._targets = [
@@ -268,11 +287,11 @@ class WebBoxingGame:
             if target.hit_correct:
                 self._score += 10
                 self._register_success()
-                self._popups.append(Popup("+10", target.center[0], target.center[1], "good"))
+                self._popups.append(Popup("CHECKPOINT VALIDADO", target.center[0], target.center[1], "good"))
                 self._ripples.append(Ripple(target.center[0], target.center[1], now, True))
             else:
                 self._register_failure()
-                self._popups.append(Popup("MAL", target.center[0], target.center[1], "bad"))
+                self._popups.append(Popup("ANGULO INSUFICIENTE", target.center[0], target.center[1], "bad"))
                 self._ripples.append(Ripple(target.center[0], target.center[1], now, False))
 
         self._ripples = [ripple for ripple in self._ripples if now - ripple.born < 0.45]
@@ -446,7 +465,7 @@ class WebBoxingGame:
             messages.append({"text": DODGE_HINT.get(self._dodge_dir, "ESQUIVA!"), "x": 320, "y": 240, "kind": "dodge"})
         elif self._dodge_result is not None and time.perf_counter() - self._dodge_result_t < DODGE_RESULT_T:
             messages.append({
-                "text": "BIEN ESQUIVADO!" if self._dodge_result else "GOLPEADO!",
+                "text": "CHECKPOINT VALIDADO" if self._dodge_result else "FUERA DE RANGO",
                 "x": 320,
                 "y": 300,
                 "kind": "good" if self._dodge_result else "bad",

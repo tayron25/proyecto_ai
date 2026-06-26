@@ -118,6 +118,26 @@ class WebPoseChallenge:
         if self._idx >= len(YOGA_POSES):
             self._next = "summary"
 
+    def finish_now(self) -> None:
+        if self._next == "summary":
+            return
+        if self._idx < len(YOGA_POSES):
+            has_activity = (
+                self._hold_accumulated > 0
+                or any(result["poseIndex"] == self._idx for result in self._option_results)
+                or not self._pose_results
+            )
+            if has_activity:
+                self._finish_option()
+                self._finish_pose_if_needed()
+        self._success = False
+        self._idx = len(YOGA_POSES)
+        self._active_option = 0
+        self._hold_accumulated = 0.0
+        self._last_met_t = None
+        self._hold_ratio = 0.0
+        self._next = "summary"
+
     def _finish_option(self, force_full: bool = False) -> Optional[dict]:
         if self._idx >= len(YOGA_POSES):
             return None

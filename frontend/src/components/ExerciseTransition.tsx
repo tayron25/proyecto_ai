@@ -7,9 +7,10 @@ type Props = {
   module: NonNullable<GameState["module"]>;
   video: string | null;
   remaining: number;
+  onFinish?: () => void;
 };
 
-export function ExerciseTransition({ state, activity, module, video, remaining }: Props) {
+export function ExerciseTransition({ state, activity, module, video, remaining, onFinish }: Props) {
   const content = getTransitionContent(state, module.index, activity);
   const progress = Math.max(0, Math.min(1, remaining / 5));
   const isBoxing = state === "boxing";
@@ -46,6 +47,11 @@ export function ExerciseTransition({ state, activity, module, video, remaining }
       </aside>
 
       <div className="transitionCue">{content.cue}</div>
+      {onFinish && (
+        <button type="button" className="transitionFinishButton" onClick={onFinish}>
+          Terminar prueba y ver puntaje
+        </button>
+      )}
     </div>
   );
 }

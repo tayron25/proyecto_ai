@@ -72,6 +72,12 @@ class WebAerobics:
             self._last_cp = None
             self._last_cp_t = 0.0
 
+    def finish_now(self) -> None:
+        if self._next == "summary":
+            return
+        self._finish_module()
+        self._next = "summary"
+
     def _finish_module(self) -> Optional[dict]:
         if self._mod_idx >= len(AEROBIC_MODULES):
             return None

@@ -29,6 +29,10 @@ function formatTime(seconds: number) {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
+function estimateCalories(reps: number) {
+  return Math.max(1, Math.round(reps * 0.7));
+}
+
 export default function App() {
   const { videoRef, streamReady, error } = useCamera();
   const trainerVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -47,9 +51,16 @@ export default function App() {
   const [yogaPoseResult, setYogaPoseResult] = useState<YogaPoseResult | null>(null);
   const [aerobicsAudio, setAerobicsAudio] = useState({ current: 0, duration: 0 });
   const [cameraFps, setCameraFps] = useState(0);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [aerobicsCoach, setAerobicsCoach] = useState<{ kind: "success" | "warning"; text: string; id: number } | null>(null);
   const preparedKeyRef = useRef<string | null>(null);
   const lastBoxingResultRef = useRef<string | null>(null);
   const lastYogaPoseResultRef = useRef<string | null>(null);
+  const lastAerobicsRepsRef = useRef(0);
+  const lastAerobicsPraiseAtRef = useRef(0);
+  const aerobicsLostRhythmRef = useRef(true);
+  const aerobicsWarningTimerRef = useRef<number | null>(null);
+  const aerobicsSuccessTimerRef = useRef<number | null>(null);
   const isPlaying = gameState?.state === "boxing" || gameState?.state === "pose_challenge" || gameState?.state === "aerobics";
   const isBoxing = gameState?.state === "boxing";
   const isYoga = gameState?.state === "pose_challenge";
@@ -75,6 +86,13 @@ export default function App() {
   const summaryClapRatio = Math.max(0, Math.min(gameState?.summaryClap?.ratio ?? 0, 1));
   const isPreparing = Boolean(prep?.active && isPlaying);
   const isPausedOverlay = isPreparing || isShowingBoxingResult || pendingBoxingResult || isBoxingSummary || Boolean(yogaPoseResult) || pendingYogaPoseResult || isYogaSummary || isAerobicsSummary;
+  const biomechanicalIndex = isBoxing
+    ? gameState?.boxing?.percent ?? gameState?.boxing?.summary?.average ?? 0
+    : isYoga
+      ? gameState?.yoga?.summary?.percent ?? yogaPoseResult?.percent ?? Math.round(Math.max(0, Math.min(gameState?.activity?.progress ?? 0, 1)) * 100)
+      : isAerobics
+        ? gameState?.aerobics?.summary?.percent ?? Math.round(Math.max(0, Math.min(gameState?.activity?.progress ?? 0, 1)) * 100)
+        : 0;
 
   const dispatchCommand = useCallback(
     (command: ClientCommand, videoTime = 0) => {
@@ -227,6 +245,76 @@ export default function App() {
       audio.currentTime = 0;
     };
   }, [isAerobics, prep?.active, prep?.key]);
+
+  useEffect(() => {
+    if (!isAerobics || !gameState?.activity || isPausedOverlay) {
+      if (aerobicsWarningTimerRef.current !== null) {
+        window.clearTimeout(aerobicsWarningTimerRef.current);
+        aerobicsWarningTimerRef.current = null;
+      }
+      if (aerobicsSuccessTimerRef.current !== null) {
+        window.clearTimeout(aerobicsSuccessTimerRef.current);
+        aerobicsSuccessTimerRef.current = null;
+      }
+      lastAerobicsRepsRef.current = gameState?.activity?.reps ?? 0;
+      aerobicsLostRhythmRef.current = true;
+      setAerobicsCoach(null);
+      return;
+    }
+
+    const reps = gameState.activity.reps ?? 0;
+    const hasActiveCheckpoint = Boolean(gameState.activity.labels?.some((label) => label.active));
+
+    const warningText = gameState.activity.formOk === false
+      ? "Manten el ritmo"
+      : !hasActiveCheckpoint
+        ? "Sigue el ritmo"
+        : null;
+
+    if (warningText) {
+      aerobicsLostRhythmRef.current = true;
+    }
+
+    if (reps > lastAerobicsRepsRef.current) {
+      if (aerobicsWarningTimerRef.current !== null) {
+        window.clearTimeout(aerobicsWarningTimerRef.current);
+        aerobicsWarningTimerRef.current = null;
+      }
+      const now = performance.now();
+      const canPraise = aerobicsLostRhythmRef.current || now - lastAerobicsPraiseAtRef.current > 6500;
+      if (canPraise) {
+        if (aerobicsSuccessTimerRef.current !== null) {
+          window.clearTimeout(aerobicsSuccessTimerRef.current);
+        }
+        setAerobicsCoach({ kind: "success", text: "Muy bien", id: Date.now() });
+        lastAerobicsPraiseAtRef.current = now;
+        aerobicsLostRhythmRef.current = false;
+        aerobicsSuccessTimerRef.current = window.setTimeout(() => {
+          setAerobicsCoach((current) => current?.kind === "success" ? null : current);
+          aerobicsSuccessTimerRef.current = null;
+        }, 900);
+      }
+    }
+    lastAerobicsRepsRef.current = reps;
+
+    if (!warningText) {
+      if (aerobicsWarningTimerRef.current !== null) {
+        window.clearTimeout(aerobicsWarningTimerRef.current);
+        aerobicsWarningTimerRef.current = null;
+      }
+      setAerobicsCoach((current) => current?.kind === "warning" ? null : current);
+      return;
+    }
+
+    if (aerobicsCoach?.kind === "success" || aerobicsWarningTimerRef.current !== null) {
+      return;
+    }
+
+    aerobicsWarningTimerRef.current = window.setTimeout(() => {
+      setAerobicsCoach({ kind: "warning", text: warningText, id: Date.now() });
+      aerobicsWarningTimerRef.current = null;
+    }, 1700);
+  }, [aerobicsCoach?.kind, gameState?.activity, isAerobics, isPausedOverlay]);
 
   useEffect(() => {
     const audio = boxingAudioRef.current;
@@ -400,8 +488,10 @@ export default function App() {
     preparedKeyRef.current = null;
     lastBoxingResultRef.current = null;
     lastYogaPoseResultRef.current = null;
+    setPrep(null);
     setBoxingResult(null);
     setYogaPoseResult(null);
+    setReportModalOpen(false);
     dispatchCommand("menu");
   }, [dispatchCommand]);
 
@@ -409,10 +499,33 @@ export default function App() {
     preparedKeyRef.current = null;
     lastBoxingResultRef.current = null;
     lastYogaPoseResultRef.current = null;
+    setPrep(null);
     setBoxingResult(null);
     setYogaPoseResult(null);
+    setReportModalOpen(false);
+    if (trainerVideoRef.current) {
+      trainerVideoRef.current.currentTime = 0;
+    }
+    if (aerobicsAudioRef.current) {
+      aerobicsAudioRef.current.currentTime = 0;
+    }
+    if (boxingAudioRef.current) {
+      boxingAudioRef.current.currentTime = 0;
+    }
+    if (yogaAudioRef.current) {
+      yogaAudioRef.current.currentTime = 0;
+    }
     dispatchCommand("reset");
   }, [dispatchCommand]);
+
+  const finishCurrentTest = useCallback(() => {
+    preparedKeyRef.current = prep?.key ?? preparedKeyRef.current;
+    setPrep(null);
+    setBoxingResult(null);
+    setYogaPoseResult(null);
+    setReportModalOpen(false);
+    dispatchCommand("finish", trainerVideoRef.current?.currentTime ?? 0);
+  }, [dispatchCommand, prep?.key]);
 
   const summaryClapPrompt = isSummary ? (
     <div className="summaryClapPrompt">
@@ -421,6 +534,13 @@ export default function App() {
         <b style={{ transform: `scaleX(${summaryClapRatio})` }} />
       </i>
     </div>
+  ) : null;
+
+  const exportReportButton = isSummary ? (
+    <button type="button" className="reportExportButton" onClick={() => setReportModalOpen(true)}>
+      <span className="reportDocIcon" aria-hidden="true" />
+      Exportar Reporte para Fisioterapeuta / Coach
+    </button>
   ) : null;
 
   return (
@@ -458,13 +578,19 @@ export default function App() {
         <div className="topBar">
           <span className={connected ? "status ok" : "status"}>{connected ? "Pose activa" : "Conectando backend"}</span>
           <span>FPS {gameState?.fps ?? 0}</span>
-          <span>Score {gameState?.score ?? 0}</span>
+          <span>Indice de Precision Biomecanica {biomechanicalIndex}%</span>
         </div>
 
-        <div className="actions">
+        <div className={`actions ${isPreparing || isSummary || boxingResult || yogaPoseResult ? "overlayActions" : ""}`}>
           <button type="button" onClick={exitToMenu}>Menu</button>
-          <button type="button" onClick={() => dispatchCommand("reset")}>Reset</button>
+          <button type="button" onClick={replayCurrent}>Reset</button>
         </div>
+
+        {isAerobics && !isAerobicsSummary && !isPreparing && (
+          <div className="aerobicsFinishActions">
+            <button type="button" onClick={finishCurrentTest}>Terminar</button>
+          </div>
+        )}
 
         {gameState?.module && (
           <div className="moduleBadge">
@@ -497,10 +623,10 @@ export default function App() {
               <span>ESTABILIDAD</span>
               <strong>
                 {gameState.activity.success
-                  ? "EXCELENTE"
+                  ? "POSTURA OPTIMIZADA"
                   : gameState.activity.total && gameState.activity.met === gameState.activity.total
-                    ? "MANTEN"
-                    : "AJUSTA"}
+                    ? "CHECKPOINT VALIDADO"
+                    : "ANGULO INSUFICIENTE"}
               </strong>
             </div>
             <div className="yogaHudCenter">
@@ -513,6 +639,11 @@ export default function App() {
 
         {isAerobics && gameState?.activity && (
           <div className="aerobicsHud">
+            {aerobicsCoach && (
+              <div key={aerobicsCoach.id} className={`aerobicsCoachFeedback ${aerobicsCoach.kind}`}>
+                {aerobicsCoach.text}
+              </div>
+            )}
             <div className="aerobicsHudTitle">
               <strong>{gameState.activity.title}</strong>
               <span>FLOW ACTIVO</span>
@@ -552,10 +683,11 @@ export default function App() {
 
         {isAerobicsSummary && gameState?.aerobics?.summary && (
           <div className="aerobicsSummaryOverlay">
-            <span>RUTINA COMPLETA</span>
-            <h2>{gameState.aerobics.summary.message}</h2>
-            <strong>{gameState.aerobics.summary.percent}%</strong>
-            <p>{gameState.aerobics.summary.reps}/{gameState.aerobics.summary.target} pasos completados</p>
+            <span>Indice de Precision Biomecanica</span>
+            <h2 className="aerobicsCalorieTitle">Gasto Calorico Estimado</h2>
+            <strong className="aerobicsCalories">{estimateCalories(gameState.aerobics.summary.reps)} kcal</strong>
+            <p>Intensidad: Moderada/Cardio</p>
+            <b className="summaryDetail scoreDetail">Puntaje de Rutina: {gameState.aerobics.summary.percent}%</b>
             <div className="aerobicsSummaryGrid">
               {gameState.aerobics.summary.results.map((result) => (
                 <article key={result.id}>
@@ -571,14 +703,16 @@ export default function App() {
               ))}
             </div>
             {summaryClapPrompt}
+            {exportReportButton}
           </div>
         )}
 
         {yogaPoseResult && (
           <div className="yogaResultOverlay">
             <span>MODULO {yogaPoseResult.index + 1}</span>
-            <h2>{yogaPoseResult.message}</h2>
+            <h2>Rango de Movimiento</h2>
             <strong>{yogaPoseResult.percent}%</strong>
+            <p>{yogaPoseResult.message}</p>
             <b className="yogaModulePoints">{yogaPoseResult.points}/{yogaPoseResult.maxPoints} PUNTOS</b>
             <p>{yogaPoseResult.name}</p>
             <div className="yogaSideScores">
@@ -589,14 +723,19 @@ export default function App() {
               ))}
             </div>
             <small>PORCENTAJE DEL MODULO - respira, integra y continua</small>
+            <button type="button" className="resultFinishButton yogaFinishButton" onClick={finishCurrentTest}>
+              Terminar prueba y ver puntaje
+            </button>
           </div>
         )}
 
         {isYogaSummary && gameState?.yoga?.summary && (
           <div className="yogaSummaryOverlay">
-            <span>CIERRE DE PRACTICA</span>
-            <h2>{gameState.yoga.summary.message}</h2>
-            <strong>{gameState.yoga.summary.points} pts</strong>
+            <span>Indice de Precision Biomecanica</span>
+            <h2>Rango de Movimiento</h2>
+            <strong>{gameState.yoga.summary.percent}%</strong>
+            <p>{gameState.yoga.summary.message}</p>
+            <b className="summaryDetail">{gameState.yoga.summary.points}/{gameState.yoga.summary.maxPoints} puntos tecnicos</b>
             <div className="yogaSummaryGrid">
               {gameState.yoga.summary.results.map((result) => (
                 <article key={result.id}>
@@ -617,24 +756,30 @@ export default function App() {
               ))}
             </div>
             {summaryClapPrompt}
+            {exportReportButton}
           </div>
         )}
 
         {boxingResult && (
           <div className="boxingResultOverlay">
             <span>MODULO {boxingResult.index + 1}</span>
-            <h2>{boxingResult.rating}</h2>
+            <h2>Efectividad de Extension</h2>
             <strong>{boxingResult.percent}%</strong>
+            <p>{boxingResult.rating}</p>
             <p>{boxingResult.name}</p>
             <small>{boxingResult.correct}/{boxingResult.expected} movimientos correctos - mejor combo x{boxingResult.bestCombo}</small>
+            <button type="button" className="resultFinishButton boxingFinishButton" onClick={finishCurrentTest}>
+              Terminar prueba y ver puntaje
+            </button>
           </div>
         )}
 
         {isBoxingSummary && gameState?.boxing?.summary && (
           <div className="boxingSummaryOverlay">
-            <span>RESUMEN FINAL</span>
-            <h2>{gameState.boxing.summary.message}</h2>
+            <span>Indice de Precision Biomecanica</span>
+            <h2>Efectividad de Extension</h2>
             <strong>{gameState.boxing.summary.average}%</strong>
+            <p>{gameState.boxing.summary.message}</p>
             <div className="boxingSummaryGrid">
               {gameState.boxing.summary.results.map((result) => (
                 <article key={result.id}>
@@ -650,6 +795,7 @@ export default function App() {
               ))}
             </div>
             {summaryClapPrompt}
+            {exportReportButton}
           </div>
         )}
 
@@ -661,6 +807,34 @@ export default function App() {
             video={gameState.video ?? null}
             remaining={prep?.remaining ?? PREP_SECONDS}
           />
+        )}
+
+        {reportModalOpen && (
+          <div className="reportModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+            <div className="reportModal">
+              <span>NEOFIT LINK</span>
+              <h2 id="reportModalTitle">Reporte Biomecanico Generado</h2>
+              <dl>
+                <div>
+                  <dt>Paciente/Usuario</dt>
+                  <dd>Carlos Mendoza</dd>
+                </div>
+                <div>
+                  <dt>Precision Angular General</dt>
+                  <dd>{biomechanicalIndex || 91}%</dd>
+                </div>
+                <div>
+                  <dt>Rango de Movimiento</dt>
+                  <dd>Optimizado</dd>
+                </div>
+                <div>
+                  <dt>Estado</dt>
+                  <dd>Listo para enviar a Fisioterapeuta</dd>
+                </div>
+              </dl>
+              <button type="button" onClick={() => setReportModalOpen(false)}>Entendido</button>
+            </div>
+          </div>
         )}
 
         {error && <div className="cameraError">{error}</div>}

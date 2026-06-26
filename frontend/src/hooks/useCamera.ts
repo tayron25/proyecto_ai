@@ -17,6 +17,7 @@ export function useCamera() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
+          setError(null);
           setStreamReady(true);
         }
       } catch {

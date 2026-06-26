@@ -50,7 +50,9 @@ class WebMenu:
             return False
         lw = landmarks[LEFT_WRIST]
         rw = landmarks[RIGHT_WRIST]
-        return abs(lw.x - rw.x) < CLAP_DIST
+        dx = lw.x - rw.x
+        dy = lw.y - rw.y
+        return (dx * dx + dy * dy) < (CLAP_DIST * CLAP_DIST)
 
     def update(self, landmarks: Optional[list]) -> None:
         self._wrists = [None, None]
@@ -63,10 +65,15 @@ class WebMenu:
             self._wrists = [lw, rw]
             wrist_pts = [lw, rw]
 
+        previous_hovered_idx = self._hovered_idx
         self._hovered_idx = -1
         for idx, button in enumerate(self._buttons):
             if button.update(wrist_pts):
                 self._hovered_idx = idx
+
+        if self._hovered_idx != previous_hovered_idx:
+            self._clap_t = None
+            self._clap_ratio = 0.0
 
         if self._clapping(landmarks) and self._hovered_idx >= 0:
             if self._clap_t is None:

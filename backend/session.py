@@ -102,6 +102,14 @@ class GameSession:
             elif self._state == "aerobics":
                 self._aerobics.update(None, video_time=video_time, video_ended=True)
             return self._state_json(self._engine.landmarks)
+        elif command == "finish":
+            if self._state == "boxing":
+                self._boxing.finish_now()
+            elif self._state == "pose_challenge":
+                self._pose_challenge.finish_now()
+            elif self._state == "aerobics":
+                self._aerobics.finish_now()
+            return self._state_json(self._engine.landmarks)
         elif selected_game:
             self._apply_menu_action(str(selected_game))
 
@@ -159,7 +167,9 @@ class GameSession:
             return False
         lw = landmarks[LEFT_WRIST]
         rw = landmarks[RIGHT_WRIST]
-        return abs(lw.x - rw.x) < CLAP_DIST
+        dx = lw.x - rw.x
+        dy = lw.y - rw.y
+        return (dx * dx + dy * dy) < (CLAP_DIST * CLAP_DIST)
 
     def _update_summary_clap(self, landmarks: Optional[list]) -> None:
         now = time.perf_counter()
